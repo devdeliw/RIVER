@@ -1,3 +1,4 @@
+//! tests for the regula falsi root-finding algorithm(s) with each variant 
 use numena::root_finding::common::{RootFindingError, Termination, ToleranceReason};
 use numena::root_finding::regula_falsi::{
     regula_falsi, RegulaFalsiCfg, RegulaFalsiError, RegulaFalsiVariant,
