@@ -1,1 +1,2 @@
-pub mod root_finding;
+ipub mod root_finding;
+
