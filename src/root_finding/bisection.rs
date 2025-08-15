@@ -182,7 +182,7 @@ where F: FnMut(f64) -> Result<f64, BisectionError> {
 ///     └ is computed for reporting. This incurs exactly one extra evaluation. 
 ///
 /// # Warning 
-/// └ Even if `(b - a)` already meets interval width tolerance, a sign change is still required. 
+/// └ Even if `(b - a)` already meets interval width tolerance, a sign change is required. 
 pub fn bisection<F>(
     mut func: F,                
     mut a: f64, 
