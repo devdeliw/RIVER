@@ -1,3 +1,4 @@
+//! tests for the bisection root finding algorithm 
 use numena::root_finding::common::{RootFindingError, Termination, ToleranceReason}; 
 use numena::root_finding::bisection::{bisection, BisectionCfg, BisectionError};
 
