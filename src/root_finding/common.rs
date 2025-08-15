@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+
 /// Hard cap on automatically computed iteration counts for two-bracket methods.
 ///
 /// This limit is only applied when `max_iter` is `None`/not specified
@@ -10,6 +11,7 @@ use thiserror::Error;
 /// much larger, but in practical floating-point ops, going beyond this
 /// rarely improves accuracy.
 pub(crate) const DEFAULT_MAX_ITER_LIMIT: usize = 500;
+
 
 /// Summarizes the outcome of a root-finding run.
 ///
@@ -76,6 +78,7 @@ pub enum Termination {
     Stagnation  
 }
 
+
 /// Tolerance variants for root-finding algorithms after completion.  
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToleranceReason { 
@@ -83,6 +86,7 @@ pub enum ToleranceReason {
     WidthTolReached, 
     ToleranceNotReached 
 } 
+
 
 /// Compute the bisection-based iteration upper bound given a target width tolerance.  
 ///
@@ -173,6 +177,7 @@ pub(crate) fn validate_tolerances(
 pub(crate) fn width_tol_current(a: f64, b: f64, abs_x: f64, rel_x: f64) -> f64 { 
     abs_x + rel_x * a.abs().max(b.abs()).max(1.0)
 }
+
 
 /// Determines whether `u` and `v` are of opposite sign. 
 ///
