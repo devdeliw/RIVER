@@ -388,7 +388,7 @@ where F: FnMut(f64) -> f64 {
                     // scale retained endpoint adaptively
                     fa *= fsol / (fsol + fb) 
                 }, 
-                (RegulaFalsiVariant::AndersonBjorck, Some(Side::Right))  => {
+                (RegulaFalsiVariant::AndersonBjorck, Some(Side::Right)) => {
                     // more aggressive scaling than pegasus 
                     let ratio = 1.0 - fsol / fb; 
                     if ratio <= 0.0 { fa *= 0.5; } else { fa *= ratio; }
@@ -413,7 +413,7 @@ where F: FnMut(f64) -> f64 {
                     // scale retained endpoint adaptively
                     fb *= fsol / (fsol + fa) 
                 }, 
-                (RegulaFalsiVariant::AndersonBjorck, Some(Side::Left))  => {
+                (RegulaFalsiVariant::AndersonBjorck, Some(Side::Left)) => {
                     // more agressive scaling than pegasus
                     let ratio = 1.0 - fsol / fa; 
                     if ratio <= 0.0 { fb *= 0.5; } else { fb *= ratio; }
