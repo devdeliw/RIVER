@@ -29,7 +29,7 @@ pub(crate) const DEFAULT_MAX_ITER_LIMIT: usize = 500;
 /// ├ `right`       -  Final right bound of the bracketing interval.
 /// ├ `termination` - [`Termination`] variant indicating why the algorithm stopped.
 /// ├ `tolerance`   - [`ToleranceReason`] indicating which tolerance criterion was met.
-/// └ `algorithm`   -  Name of the algorithm (e.g., `"Bisection"`, `"Regula Falsi"`).
+/// └ `algorithm`   -  Name of the algorithm (e.g., `"bisection"`, `"regula_falsi_pure"`).
 #[derive(Debug, Copy, Clone)]
 pub struct RootReport { 
     pub root:        f64,
