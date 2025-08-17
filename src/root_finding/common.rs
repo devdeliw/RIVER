@@ -1,46 +1,253 @@
 use thiserror::Error;
 
+/// All algorithms for root-finding. 
+#[derive(Debug, Copy, Clone)]
+pub enum Algorithm {
+    Bisection,
+    RegulaFalsiPure,
+    RegulaFalsiIllinois,
+    RegulaFalsiPegasus,
+    RegulaFalsiAndersonBjorck,
+    Secant,
+}
+impl Algorithm {
+    /// Hard cap on automatically computed iteration counts for methods.
+    ///
+    /// # Notes
+    /// ├ Only applied when `max_iter` is `None`.
+    /// ├ Values are method-specific heuristics for reasonable convergence.
+    /// └ Methods with theoretical iteration limits (e.g. [`Algorithm::Bisection`])  
+    ///   return `0` here, meaning "compute theoretical bound instead". 
+    ///     ├ If the theoretical limit is too large practically, 
+    ///     └ [`DEFAULT_MAX_ITER_FALLBACK`] fallback is used instead.
+    pub const fn default_max_iter(self) -> usize {
+        match self {
+            Algorithm::Bisection                 => 0,   // theoretical limit
+            Algorithm::RegulaFalsiPure           => 200,
+            Algorithm::RegulaFalsiIllinois       => 100,
+            Algorithm::RegulaFalsiPegasus        => 100,
+            Algorithm::RegulaFalsiAndersonBjorck => 100,
+            Algorithm::Secant                    => 100,
+        }
+    }
 
-/// Hard cap on automatically computed iteration counts for two-bracket methods.
-///
-/// This limit is only applied when `max_iter` is `None`/not specified
-/// to prevent pathological cases (e.g., extremely small tolerances or huge 
-/// initial brackets) from causing unreasonably long runtimes.
-///
-/// This is a safety limit, not a mathematical bound. Theoretical bounds may be
-/// much larger, but in practical floating-point ops, going beyond this
-/// rarely improves accuracy.
-pub(crate) const DEFAULT_MAX_ITER_LIMIT: usize = 500;
+    /// Algorithm names for the [`RootMeta::algorithm`] field for each method.  
+    pub const fn algorithm_name(self) -> &'static str {
+        match self {
+            Algorithm::Bisection                 => "bisection",
+            Algorithm::RegulaFalsiPure           => "regula_falsi_pure",
+            Algorithm::RegulaFalsiIllinois       => "regula_falsi_illinois",
+            Algorithm::RegulaFalsiPegasus        => "regula_falsi_pegasus",
+            Algorithm::RegulaFalsiAndersonBjorck => "regula_falsi_anderson_bjorck",
+            Algorithm::Secant                    => "secant",
+        }
+    }
+}
+impl std::fmt::Display for Algorithm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.algorithm_name())
+    }
+}
 
+/// Global hard cap on iterations, applied if a method’s theoretical
+/// or heuristic default would otherwise exceed this value.
+///
+pub const GLOBAL_MAX_ITER_FALLBACK: usize = 500;
+
+
+/// Shared metadata returned by all root-finding algorithms.
+/// Contains the universal outcome fields of a solver run.
+#[derive(Debug, Clone, Copy)]
+pub struct RootMeta {
+    pub root: f64,                  // root approximation 
+    pub f_root: f64,                // f(root)
+    pub iterations: usize,          // # iterations performed 
+    pub evals: usize,               // # function evaluations
+    pub termination: Termination,   // reason why algorithm stopped 
+    pub tolerance: ToleranceReason, // which tolerance criterion was satisifed (or not) 
+    pub algorithm: &'static str,    // algorithm name (e.g. "bisection", "secant", ...)
+}
 
 /// Summarizes the outcome of a root-finding run.
 ///
-/// Final report returned by all root-finding algorithms. 
-/// It collects the computed root, residual, iteration count, 
-/// function evaluation count, final bracket bounds, termination condition, 
-/// tolerance reason, and algorithm name into a single structured result.
+/// Final report enum returned by all root-finding algorithms.
+/// Each variant contains [`RootMeta`] with the common fields
+/// (root, residual, iterations, evals, termination, tolerance, algorithm),
+/// plus method-specific fields.
 ///
-/// # Fields 
-/// ├ `root`        -  The computed root approximation.
-/// ├ `f_root`      -  The value of `f(root)` at the computed root.
-/// ├ `iterations`  -  Total number of iterations performed.
-/// ├ `evals`       -  Total number of function evaluations.
-/// ├ `left`        -  Final left bound of the bracketing interval.
-/// ├ `right`       -  Final right bound of the bracketing interval.
-/// ├ `termination` - [`Termination`] variant indicating why the algorithm stopped.
-/// ├ `tolerance`   - [`ToleranceReason`] indicating which tolerance criterion was met.
-/// └ `algorithm`   -  Name of the algorithm (e.g., `"bisection"`, `"regula_falsi_pure"`).
-#[derive(Debug, Copy, Clone)]
-pub struct RootReport { 
-    pub root:        f64,
-    pub f_root:      f64,
-    pub iterations:  usize,
-    pub evals:       usize,
-    pub left:        f64,
-    pub right:       f64,
-    pub termination: Termination,
-    pub tolerance:   ToleranceReason,
-    pub algorithm:   &'static str, 
+/// Variants:
+/// ├ [`RootReport::Bracket`]   
+/// │   Bracketing methods (e.g. bisection, regula falsi)  
+/// │   ├ `meta`   : [`RootMeta`] (common fields)  
+/// │   ├ `left`   : Final left bound of the bracketing interval.  
+/// │   └ `right`  : Final right bound of the bracketing interval.  
+/// │
+/// ├ [`RootReport::OnePoint`]  
+/// │   One-point methods (e.g. Newton)  
+/// │   ├ `meta`   : [`RootMeta`] (common fields)  
+/// │   └ `point`  : Final iterate xₙ that gave the result.  
+/// │
+/// ├ [`RootReport::TwoPoint`]  
+/// │   Two-point methods (e.g. secant)  
+/// │   ├ `meta`   : [`RootMeta`] (common fields)  
+/// │   ├ `curr`   : Final iterate xₙ.  
+/// │   └ `prev`   : Previous iterate xₙ₋₁.  
+/// │
+/// └ [`RootReport::MultiPoint`]  
+///     Multi-point methods (e.g. inverse quadratic interpolation)  
+///     ├ `meta`    : [`RootMeta`] (common fields)  
+///     └ `points`  : Recent sequence of points contributing to result.  
+///
+/// # Common Fields in [`RootMeta`]
+/// ├ `root`        : The computed root approximation.  
+/// ├ `f_root`      : Value of f(root).  
+/// ├ `iterations`  : Total number of iterations performed.  
+/// ├ `evals`       : Total number of function evaluations.  
+/// ├ `termination` : [`Termination`] reason for stopping.  
+/// └ `tolerance`   : [`ToleranceReason`] satisfied (or not).  
+#[derive(Debug)]
+pub enum RootReport {
+    Bracket {
+        meta: RootMeta,
+        /// Final left bound of bracketing interval.
+        left: f64,
+        /// Final right bound of bracketing interval.
+        right: f64,
+    },
+
+    OnePoint {
+        meta: RootMeta,
+        /// Final iterate x_n that yielded the result.
+        point: f64,
+    },
+
+    TwoPoint {
+        meta: RootMeta,
+        /// Parent iterate that produced root x_n (x_{n-1})
+        parent1: f64,
+        /// Parent iterate that produced root x_n (x_{n-2})
+        parent2: f64,
+    },
+
+    MultiPoint {
+        meta: RootMeta,
+        /// Recent sequence of points before calculated root.
+        points: Vec<f64>,
+    },
+}
+
+/// # Common accessors
+///
+/// These methods are available for all solver variants.
+/// ├ [`RootReport::termination()`] : [`Termination`]
+/// ├ [`RootReport::tolerance()`]   : [`ToleranceReason`]
+/// ├ [`RootReport::root()`]        : `f64`
+/// ├ [`RootReport::f_root()`]      : `f64`
+/// ├ [`RootReport::iterations()`]  : `usize`
+/// ├ [`RootReport::evals()`]       : `usize`
+/// └ [`RootReport::algorithm()`]   : `&'static str`
+/// # Variant-specific accessors
+///
+/// These return `Option<T>` because the field only exists
+/// for some variants.  
+///
+/// [`RootReport::Bracket`]
+/// └ [`RootReport::left()`], [`RootReport::right()`] : Option<f64>  
+/// [`RootReport::OnePoint`]
+/// └ [`RootReport::point()`]                         : Option<f64> 
+/// [`RootReport::TwoPoint`]
+/// └ [`RootReport::curr()`], [`RootReport::prev()`]  : Option<f64> 
+/// [`RootReport::MultiPoint`] 
+/// └ [`RootReport::points()`]                        : Option<Vec<f64>>  
+///
+/// ## Warning: For non-matching variants they return `None`.
+impl RootReport {
+    /// Access shared [`RootMeta`] directly.
+    pub fn meta(&self) -> &RootMeta {
+        match self {
+            RootReport::Bracket { meta, .. } => meta,
+            RootReport::OnePoint { meta, .. } => meta,
+            RootReport::TwoPoint { meta, .. } => meta,
+            RootReport::MultiPoint { meta, .. } => meta,
+        }
+    }
+
+    /// Computed root approximation.
+    pub fn root(&self) -> f64 {
+        self.meta().root
+    }
+
+    /// Function value at the computed root.
+    pub fn f_root(&self) -> f64 {
+        self.meta().f_root
+    }
+
+    /// Number of iterations performed.
+    pub fn iterations(&self) -> usize {
+        self.meta().iterations
+    }
+
+    /// Number of function evaluations.
+    pub fn evals(&self) -> usize {
+        self.meta().evals
+    }
+
+    /// Why the algorithm stopped.
+    pub fn termination(&self) -> Termination {
+        self.meta().termination
+    }
+
+    /// Tolerance criteria that was satisfied (or not).
+    pub fn tolerance(&self) -> ToleranceReason {
+        self.meta().tolerance
+    }
+
+    /// Algorithm name (e.g., "bisection", "secant").
+    pub fn algorithm(&self) -> &'static str {
+        self.meta().algorithm
+    }
+
+    pub fn left(&self) -> Option<f64> {
+        match self {
+            RootReport::Bracket { left, .. } => Some(*left),
+            _ => None,
+        }
+    }
+
+    pub fn right(&self) -> Option<f64> {
+        match self {
+            RootReport::Bracket { right, .. } => Some(*right),
+            _ => None,
+        }
+    }
+
+    pub fn parent1(&self) -> Option<f64> {
+        match self {
+            RootReport::TwoPoint { parent1, .. } => Some(*parent1),
+            _ => None,
+        }
+    }
+
+    pub fn parent2(&self) -> Option<f64> {
+        match self {
+            RootReport::TwoPoint { parent2, .. } => Some(*parent2),
+            _ => None,
+        }
+    }
+
+    pub fn points(&self) -> Option<&[f64]> {
+        match self {
+            RootReport::MultiPoint { points, .. } => Some(points),
+            _ => None,
+        }
+    }
+
+    pub fn point(&self) -> Option<f64> {
+        match self {
+            RootReport::OnePoint { point, .. } => Some(*point),
+            _ => None,
+        }
+    }
 }
 
 
@@ -67,6 +274,9 @@ pub enum RootFindingError {
 
     #[error("invalid max_iter: must be >= 1. got max_iter={got}")]
     InvalidMaxIter   { got: usize },
+
+    #[error("invalid algorithm: got {algorithm}")]
+    InvalidAlgorithm { algorithm: Algorithm }
 }
 
 
@@ -79,12 +289,28 @@ pub enum Termination {
 }
 
 
-/// Tolerance variants for root-finding algorithms after completion.  
+/// Tolerance variants for root-finding algorithms after completion.
+/// ├ [`ToleranceReason::AbsFxReached`]    
+/// │   ├ All methods 
+/// │   └ |f(x)| <= tol
+/// │
+/// ├ [`ToleranceReason::WidthTolReached`]
+/// │   ├ [`RootReport::Bracket`] 
+/// │   └ [a, b] -> (b - a).abs() <= tol 
+/// │
+/// ├ [`ToleranceReason::StepSizeReached`]
+/// │   ├ [`RootReport::TwoPoint`], [`RootReport::MultiPoint`]
+/// │   └ x_n - x_{n - 1} <= tol 
+/// │
+/// └ [`ToleranceReason::ToleranceNotReached`] 
+///     ├ All methods 
+///     └ Tolerance was not reached, usually alongside [`Termination::IterationLimit`]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToleranceReason { 
     AbsFxReached, 
-    WidthTolReached, 
-    ToleranceNotReached 
+    WidthTolReached,
+    StepSizeReached,
+    ToleranceNotReached, 
 } 
 
 
@@ -98,15 +324,10 @@ pub enum ToleranceReason {
 /// ├ a - left endpoint 
 /// ├ b - right endpoint 
 /// └ `width_tol`, the convergence tolerance on x-values
-
+///
 /// Returns:
 /// ├ `Ok(theoretical_iters)` - theoretical # bisections to satisfy given width tol 
 /// └ `Err(RootFindingError::InvalidTolerance)` - width_tol <= 0 or non-finite. 
-///
-/// # Visibility
-/// This function is crate-visible (`pub(crate)`) and is intended to be used
-/// by all two-bracket algorithms to produce a relatively consistent default 
-/// number of iterations to use. 
 pub(crate) fn bisection_theoretical_iter( 
     a: f64, 
     b: f64, 
@@ -170,12 +391,23 @@ pub(crate) fn validate_tolerances(
 
 /// Combined absolute + relative width tolerance for the current bracket [a, b].
 ///
-/// Formula: `abs_x + rel_x * max(max(|a|, |b|), 1.0)`
+/// `abs_x + rel_x * max(max(|a|, |b|), 1.0)`
 ///
 /// Ensures the relative scale is never below 1.0 to avoid tiny tolerances
 /// near zero. Used by all bracketing algorithms for consistent checks.
+///
+/// Only used for Bracketing methods for root-finding.
 pub(crate) fn width_tol_current(a: f64, b: f64, abs_x: f64, rel_x: f64) -> f64 { 
     abs_x + rel_x * a.abs().max(b.abs()).max(1.0)
+}
+
+/// Combined absolute + relative tolerance.
+///
+/// `abs_x + rel_x * |x|` 
+///
+/// Only used for Open methods for root-finding. 
+pub(crate) fn step_tol_current(x: f64, abs_x: f64, rel_x: f64) -> f64 { 
+    abs_x + rel_x * x.abs()
 }
 
 
@@ -183,7 +415,7 @@ pub(crate) fn width_tol_current(a: f64, b: f64, abs_x: f64, rel_x: f64) -> f64 {
 ///
 /// Used for two-bracketing algorithms to determine which direction 
 /// to shrink the interval/bracket by, or if there is an initial 
-/// error if f(a) is same sign as f(b), not guaranteeing a root exists. 
+/// error when sign(f(a)) == sign(f(b))
 pub(crate) fn opposite_signs(u: f64, v: f64) -> bool {
-    (u > 0.0 && v < 0.0) || (u < 0.0 && v > 0.0)
+    (u.is_sign_positive()) != (v.is_sign_positive())
 }
