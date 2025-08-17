@@ -17,10 +17,10 @@ fn finds_sqrt_2() -> TestResult {
 
     let res = bisection(f, 0.0, 2.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert!((res.root - 2.0_f64.sqrt()).abs() <= tol);
-    assert!(res.iterations > 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert!((res.root() - 2.0_f64.sqrt()).abs() <= tol);
+    assert!(res.iterations() > 0);
     Ok(())
 }
 
@@ -37,10 +37,10 @@ fn finds_3() -> TestResult {
 
     let res = bisection(f, 0.0, 10.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert!((res.root - 3.0_f64).abs() <= tol);
-    assert!(res.iterations > 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert!((res.root() - 3.0_f64).abs() <= tol);
+    assert!(res.iterations() > 0);
     Ok(())
 }
 
@@ -79,10 +79,10 @@ fn finds_negative_5() -> TestResult {
 
     let res = bisection(f, -10.0, 0.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert!((res.root - (-5.0_f64)).abs() <= tol);
-    assert!(res.iterations > 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert!((res.root() - (-5.0_f64)).abs() <= tol);
+    assert!(res.iterations() > 0);
     Ok(())
 }
 
@@ -99,8 +99,8 @@ fn uses_max_iter() -> TestResult {
 
     let res = bisection(f, -3.0, 2.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::IterationLimit);
-    assert_eq!(res.iterations, niter);
+    assert_eq!(res.termination(), Termination::IterationLimit);
+    assert_eq!(res.iterations(), niter);
     Ok(())
 }
 
@@ -119,9 +119,9 @@ fn endpoint_a_is_root_iterations_0() -> TestResult {
     let cfg = BisectionCfg::new().with_abs_fx(1e-10);
     let res = bisection(f, 0.0, 5.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert_eq!(res.iterations, 0); 
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert_eq!(res.iterations(), 0); 
     Ok(())
 }
 
@@ -131,9 +131,9 @@ fn endpoint_b_is_root_iterations_0() -> TestResult {
     let cfg = BisectionCfg::new().with_abs_fx(1e-10);
     let res = bisection(f, -5.0, 0.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert_eq!(res.iterations, 0); 
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert_eq!(res.iterations(), 0); 
     Ok(())
 }
 
@@ -149,10 +149,10 @@ fn pathological_flat() -> TestResult {
 
     let res = bisection(f, -2.0, 2.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert!((res.root - 1.0).abs() <= tol);
-    assert!(res.iterations > 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert!((res.root() - 1.0).abs() <= tol);
+    assert!(res.iterations() > 0);
     Ok(())
 }
 
@@ -164,8 +164,8 @@ fn narrow_interval_stops_on_width() -> TestResult {
         .with_abs_fx(1e-20);
     let res = bisection(f, -3e-16, 1e-16, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::WidthTolReached);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::WidthTolReached);
     Ok(())
 }
 
@@ -178,9 +178,9 @@ fn high_function_tol_stops_quickly() -> TestResult {
 
     let res = bisection(f, -5.0, 1.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
-    assert!(res.iterations < 3); 
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
+    assert!(res.iterations() < 3); 
     Ok(())
 }
 
@@ -190,8 +190,8 @@ fn max_iter_1_hits_limit() -> TestResult {
     let cfg = BisectionCfg::new().with_max_iter(1);
     let res = bisection(f, -5.0, 1.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::IterationLimit);
-    assert_eq!(res.iterations, 1);
+    assert_eq!(res.termination(), Termination::IterationLimit);
+    assert_eq!(res.iterations(), 1);
     Ok(())
 }
 
@@ -211,10 +211,10 @@ fn one_endpoint_exact_root_other_not() -> TestResult {
     let cfg = BisectionCfg::new().with_abs_fx(1e-12);
     let res = bisection(f, 0.0, 2.0, cfg)?;
 
-    assert_eq!(res.root, 0.0);
-    assert_eq!(res.iterations, 0);
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
+    assert_eq!(res.root(), 0.0);
+    assert_eq!(res.iterations(), 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
     Ok(())
 }
 
@@ -237,10 +237,10 @@ fn both_endpoints_are_roots_picks_first() -> TestResult {
     let cfg = BisectionCfg::new().with_abs_fx(1e-12);
     let res = bisection(f, 1.0, 2.0, cfg)?;
 
-    assert_eq!(res.root, 1.0);
-    assert_eq!(res.iterations, 0);
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::AbsFxReached);
+    assert_eq!(res.root(), 1.0);
+    assert_eq!(res.iterations(), 0);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::AbsFxReached);
     Ok(())
 }
 
@@ -253,8 +253,9 @@ fn high_rel_tol_ignores_abs_x() -> TestResult {
         .with_max_iter(100);
     let res = bisection(f, 0.0, 21.0, cfg)?;
 
-    assert_eq!(res.termination, Termination::ToleranceReached);
-    assert_eq!(res.tolerance, ToleranceReason::WidthTolReached);
-    assert!(res.iterations < 5);
+    assert_eq!(res.termination(), Termination::ToleranceReached);
+    assert_eq!(res.tolerance(), ToleranceReason::WidthTolReached);
+    assert!(res.iterations() < 5);
     Ok(())
 }
+
