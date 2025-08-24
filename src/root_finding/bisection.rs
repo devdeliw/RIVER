@@ -1,347 +1,316 @@
-use super::common::{GLOBAL_MAX_ITER_FALLBACK};
-use super::common::{
-    RootReport, RootMeta, RootFindingError, Termination, ToleranceReason, Algorithm
-};
-use super::common::{
-    bisection_theoretical_iter, validate_tolerances, width_tol_current, 
-    opposite_signs
-}; 
-use thiserror::Error; 
+use super::algorithms::{Algorithm, BracketFamily, GLOBAL_MAX_ITER_FALLBACK}; 
+use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
+use super::tolerances::DynamicTolerance; 
+use super::signs::{opposite_sign, same_sign};
+use super::errors::{RootFindingError, ToleranceError}; 
+use super::config::{CommonCfg, impl_common_cfg};
+use thiserror::Error;
 
-const ALGORITHM: &str = Algorithm::Bisection.algorithm_name();
 
 #[derive(Debug, Error)]
 pub enum BisectionError {
     #[error(transparent)]
-    Common(#[from] RootFindingError),
+    RootFinding(#[from] RootFindingError),
 
-    #[error("no sign change on [{a}, {b}]: f(a) * f(b) > 0")]
+    #[error(transparent)]
+    Tolerance(#[from] ToleranceError),
+
+    #[error("no sign change on [{a}, {b}]: sign(f(a)) = sign(f(b))")]
     NoSignChange  { a: f64, b: f64 },
 
     #[error("invalid bounds: a and b must be finite with a < b. got [{a}, {b}]")] 
     InvalidBounds { a: f64, b: f64 },
 }
 
+
 /// Bisection Configuration 
 /// 
-/// # Defaults
+/// # Fields 
+/// └ `common` : [`CommonCfg`] with tolerances and optional `max_iter`. 
 ///
-/// ┌ DEFAULT_ABS_FX - Default absolute tolerance for convergence 
-/// ├ DEFAULT_ABS_X  - Default absolute tolerance for interval width 
-/// └ DEFAULT_REL_X  - Default relative tolerance for convergence
+/// # Construction 
+/// └ Use [`BisectionCfg::new`] then optional setters from [`impl_common_cfg`]. 
 ///
-/// # Notes: 
-/// └ If `max_iter` is None, it will be set to [`bisection_theoretical_iter`] 
-///     ├ where [`bisection_theoretical_iter`] is the theoretical 
-///     └ number of iterations for convergence. 
-///
-/// # Validation: 
-/// └ Configuration validation occurs in [`bisection`] via [`BisectionCfg::validate()`].
-///
-///    The following checks are performed: 
-///    ├ `abs_fx` >  0 and finite 
-///    ├ `abs_x`  >= 0 and finite 
-///    ├ `rel_x`  >= 0 and finite 
-///    ├ Either `abs_x` or `rel_x` must be > 0 
-///    └ `max_iter` is `None` or >= 1
+/// # Defaults 
+/// └ If `common.max_iter` is `None`, [`bisection`] resolves it using 
+///   the theoretical number of iterations for guaranteed convergence.
 #[derive(Debug, Copy, Clone)]
-pub struct BisectionCfg {
-    abs_fx:     Option<f64>, 
-    abs_x:      Option<f64>, 
-    rel_x:      Option<f64>, 
-    max_iter:   Option<usize>, 
+pub struct BisectionCfg { 
+    common: CommonCfg, 
 }
 impl BisectionCfg { 
-    pub const DEFAULT_ABS_FX: f64 = 1e-12; 
-    pub const DEFAULT_ABS_X:  f64 = 0.0; 
-    pub const DEFAULT_REL_X:  f64 = 4.0 * f64::EPSILON; 
-
-    #[must_use]
-    pub fn new() -> Self { Self::default() } 
-
-    pub fn with_abs_fx(mut self, v: f64) -> Self { self.abs_fx = Some(v); self }
-    pub fn with_abs_x (mut self, v: f64) -> Self { self.abs_x  = Some(v); self }
-    pub fn with_rel_x (mut self, v: f64) -> Self { self.rel_x  = Some(v); self }
-    pub fn with_max_iter(mut self, v: usize) -> Self { self.max_iter = Some(v); self } 
-
-    #[inline] #[must_use] pub fn abs_fx(&self) -> f64 { self.abs_fx.unwrap_or(Self::DEFAULT_ABS_FX) }
-    #[inline] #[must_use] pub fn abs_x (&self) -> f64 { self.abs_x .unwrap_or(Self::DEFAULT_ABS_X)  }
-    #[inline] #[must_use] pub fn rel_x (&self) -> f64 { self.rel_x .unwrap_or(Self::DEFAULT_REL_X)  }
-    #[inline] #[must_use] pub fn max_iter(&self) -> Option<usize> { self.max_iter }
- 
-    pub fn validate(&self) -> Result<BisectionCfg, RootFindingError> {
-        let (abs_fx, abs_x, rel_x, max_iter) = validate_tolerances(
-            self.abs_fx,
-            self.abs_x,
-            self.rel_x,
-            self.max_iter,
-            Self::DEFAULT_ABS_FX,
-            Self::DEFAULT_ABS_X,
-            Self::DEFAULT_REL_X
-        )?;
-
-        Ok(Self {
-            abs_fx: Some(abs_fx),
-            abs_x:  Some(abs_x),
-            rel_x:  Some(rel_x),
-            max_iter,
-        })
-    }
-}
-
-impl Default for BisectionCfg { 
-    fn default() -> Self { 
+    pub fn new() -> Self { 
         Self { 
-            abs_fx:     Some(Self::DEFAULT_ABS_FX), 
-            abs_x:      Some(Self::DEFAULT_ABS_X), 
-            rel_x:      Some(Self::DEFAULT_REL_X), 
-            max_iter:   None
+            common: CommonCfg::new()
         }
     }
 }
+impl_common_cfg!(BisectionCfg);
 
-/// Calculates midpoint of [a, b]
+
+/// Compute the max iteration count for guaranteed width tolerance convergence.
+/// This is used as a default if `max_iter` is not provided. 
+///
+/// # Arguments 
+/// ├ `a`       ` : left endpoint 
+/// ├ `b`         : right endpoint 
+/// └ `width_tol` : the convergence tolerance on x-values
+///
+/// # Returns:
+/// ├ `Ok(theoretical_iters)` : # bisections to guarantee `width_tol` convergence.
+/// └ `Err(ToleranceError::InvalidTolerance)` : if width_tol <= 0 or inf. 
 #[inline] 
-fn calculate_bisection(a: f64, b: f64) -> f64 { 
+pub(crate) fn theoretical_iter( 
+    a: f64, 
+    b: f64, 
+    width_tol: f64
+) -> Result<usize, ToleranceError> { 
+    if !(width_tol.is_finite() && width_tol > 0.0) {
+        return Err(ToleranceError::InvalidTolerance { got: width_tol });
+    }
+    let w0 = b - a; 
+    let theoretical_iters = if w0 <= width_tol { 0 } else {
+        (w0 / width_tol).log2().ceil() as usize
+    };
+
+    Ok(theoretical_iters)
+}
+
+
+#[inline] 
+pub(crate) fn midpoint(a: f64, b: f64) -> f64 { 
     a + (b - a) * 0.5
 }
 
-/// Calculates the function evaluation for the midpoint/bisection of [a, b]
+
+/// Calculates the function evaluation for the midpoint of [a, b].
 ///
 /// # Arguments 
-/// ├ `a` - left endpoint 
-/// ├ `b` - right endpoint 
-/// └ `eval` - function; made by default with finite checks 
+/// ├ `a`    : left endpoint 
+/// ├ `b`    : right endpoint 
+/// └ `eval` : function that also updates `evals` count; made in [`bisection`] 
 /// 
 /// # Returns 
-/// ├ Ok((midpoint, f(midpoint)) if the function evaluation f(m) is finite. 
-/// └ Err(BisectionError::NonFiniteEval) if the function evaluation f(m) is non-finite. 
+/// ├ `Ok((midpoint, f(midpoint)))` if evaluation is finite. 
+/// └ `Err(BisectionError::RootFinding(RootFindingError::NonFiniteEvaluation))`
+///   if the function evaluation is non-finite. 
 #[inline] 
 fn next_sol_estimate<F>(
     a: f64, b: f64, eval: &mut F 
 ) -> Result<(f64, f64), BisectionError> 
 where F: FnMut(f64) -> Result<f64, BisectionError> { 
-    let midpoint = calculate_bisection(a, b);
-    let fm       = eval(midpoint)?; 
-    Ok((midpoint, fm))
+    let m  = midpoint(a, b);
+    let fm = eval(m)?;
+
+    Ok((m, fm))
 }
+
 
 /// Finds a root of a function using the 
 /// [bisection method](https://en.wikipedia.org/wiki/Bisection_method).
 ///
-/// This method assumes that the function `func` is continuous on the interval `[a, b]`
-/// and that `func(a)` and `func(b)` have opposite signs, guaranteeing a root exists
+/// This method assumes that the function is continuous on the interval `[a, b]`
+/// and that `f(a)` and `f(b)` have opposite signs, guaranteeing a root exists
 /// within the interval.
 ///
 /// # Arguments
-///
-/// ┌ `func` - The function whose root is to be found.
-/// ├ `a`    - Lower bound of the search interval. Must be finite and less than `b`.
-/// ├ `b`    - Upper bound of the search interval. Must be finite and greater than `a`.
-/// └ `cfg`  - Configuration containing optional absolute (`abs_fx`, `abs_x`) and relative 
-///            (`rel_x`) tolerances for convergence. See [`BisectionCfg`]
-///    Defaults: 
-///    ├ cfg.abs_fx = 1e-12 
-///    ├ cfg.abs_x  = 0.0                  
-///    └ cfg.rel_x  = 4 * machine_epsilon 
+/// ├ `func` : The function whose root is to be found.
+/// ├ `a`    : Lower bound of the search interval. Must be finite and less than `b`.
+/// ├ `b`    : Upper bound of the search interval. Must be finite and greater than `a`.
+/// └ `cfg`  : [`BisectionCfg`] (tolerances, optional `max_iter`).  
 ///
 /// # Returns
-///
-/// On success, returns a [`RootReport::Bracket`] enum containing a struct:
-/// ├ `meta` : [`RootMeta`] struct containing 
-/// │          ├ `root`       : Approximate root location
-/// │          ├ `f_root`     : The function value at calculated root 
-/// │          ├ `iterations` : Number of iterations performed, 0 if bounds are already roots
-/// │          ├ `evals`      : Number of function evaluations performed
-/// │          ├ `termination`: Reason for termination 
-/// │          │  ├ [`Termination::ToleranceReached`]  
-/// │          │  └ [`Termination::IterationLimit`]
-/// │          ├ `tolerance`  : Which tolerance was reached
-/// │          │  ├ [`ToleranceReason::AbsFxReached`] 
-/// │          │  ├ [`ToleranceReason::WidthTolReached`] 
-/// │          │  └ [`ToleranceReason::ToleranceNotReached`]
-/// │          └ `algorithm`  : "bisection" 
-/// ├ `left` : Final left interval bound after convergence.   
-/// └ `right`: Final right interval bound after convergence. 
+/// [`RootFindingReport`] with 
+/// ├ `root`                : approximate root
+/// ├ `f_root`              : function value at `root`
+/// ├ `iterations`          : number of iterations performed
+/// ├ `evaluations`         : total function evaluations 
+/// ├ `termination_reason`  : why it stopped
+/// ├ `tolerance_satisfied` : which tolerance triggered
+/// ├ `stencil`             : previous bracket used to form the step
+/// └ `algorithm_name`      : "bisection"
 ///
 /// # Errors
-///
-/// ┌ [`BisectionError::InvalidBounds`]       - `a` or `b` is NaN/inf or if `a >= b`.
-/// ├ [`BisectionError::NoSignChange`]        - `func(a)` and `func(b)` do not have opposite signs.
+/// ├ [`BisectionError::InvalidBounds`]         : `a` or `b` is NaN/inf or if `a >= b`.
+/// ├ [`BisectionError::NoSignChange`]          : `func(a)` and `func(b)` do not have opposite signs.
 /// │
-/// │ 
-/// The following are propagated via [`BisectionError::Common`]
-/// ├ [`BisectionError::NonFiniteEvaluation`] - `func(x)` produces NaN or inf during evaluation.
-/// ├ [`BisectionError::InvalidAbsFx`]        - `cfg.abs_fx` <= 0 or not finite.
-/// ├ [`BisectionError::InvalidAbsX`]         - `cfg.abs_x` < 0 or not finite.
-/// ├ [`BisectionError::InvalidRelX`]         - `cfg.rel_x` < 0 or not finite.
-/// ├ [`BisectionError::InvalidTolerance`]    - computed width tolerance (cfg.abs_x + cfg.rel_x*scale) <= 0 or not finite.
-/// └ [`BisectionError::InvalidMaxIter`]      - `cfg.max_iter` == 0.
+/// * Propagated via [`BisectionError::RootFinding`]
+/// ├ [`RootFindingError::NonFiniteEvaluation`] : `func(x)` produces NaN or inf during evaluation.
+/// ├ [`RootFindingError::InvalidMaxIter`]      : `cfg.max_iter` = 0
+/// │
+/// * Propagated via [`BisectionError::Tolerance`] 
+/// ├ [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf
+/// ├ [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf
+/// ├ [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf
+/// └ [`ToleranceError::InvalidAbsRelX`]        : one of `abs_x` and `rel_x` not > 0.
 ///
-/// # Notes 
-/// ├ Theoretical iteration limits are based on equivalent bisection steps. 
-/// │   └ Used only if `max_iter` is `None`/not provided.  
-/// └ On early width-tolerance success, `iterations = 0` but the midpoint and its function eval 
-///   is computed for reporting. This incurs exactly one extra evaluation. 
+/// # Behavior
+/// ├ Update:
+/// │   x_mid = (x_lo + x_hi) / 2.0, maintaining a bracket
+/// │   where f(x_lo)*f(x_hi) < 0.
+/// │
+/// ├ Tolerances:
+/// │   |f(x_mid)| <= abs_fx returns with [`ToleranceSatisfied::AbsFxReached`] 
+/// │   |x_hi - x_lo|/2 <= width_tol returns with [`ToleranceSatisfied::WidthTolReached`]
+/// │
+/// └ Stencil:
+///     stores the current bracket [a, b] that produced the calculated root.
+///
+/// # Notes
+/// ├ Bisection is globally convergent and robust but only linearly convergent.
+/// └ Always requires an initial bracket with f(a) * f(b) < 0 (opposite sign).
 ///
 /// # Warning 
 /// └ Even if `(b - a)` already meets interval width tolerance, a sign change is required. 
-pub fn bisection<F>(
+pub fn bisection<F> (
     mut func: F,                
     mut a: f64, 
     mut b: f64, 
     cfg: BisectionCfg
-) -> Result<RootReport, BisectionError> 
+) -> Result<RootFindingReport, BisectionError> 
 where F: FnMut(f64) -> f64 {
-    
-    if !(a.is_finite() && b.is_finite()) || a >= b { 
+
+    if !a.is_finite() || !b.is_finite() || a >= b { 
         return Err(BisectionError::InvalidBounds { a, b }); 
     }
 
-    let cfg = cfg.validate()?; 
+    let abs_x    = cfg.common.abs_x(); 
+    let rel_x    = cfg.common.rel_x(); 
+    let abs_fx   = cfg.common.abs_fx();
+    let max_iter = cfg.common.max_iter(); 
+    let algorithm = Algorithm::Bracket(BracketFamily::Bisection);
+    let algo_name = algorithm.algorithm_name();
 
-    let abs_x    = cfg.abs_x(); 
-    let rel_x    = cfg.rel_x(); 
-    let abs_fx   = cfg.abs_fx();
-    let max_iter = cfg.max_iter;
-    let width_tol0 = width_tol_current(a, b, abs_x, rel_x);
-    let theoretical_iters = bisection_theoretical_iter(a, b, width_tol0)?;
+    // already validated via building config; redundant guard 
+    if let Some(0) = max_iter {
+        return Err(RootFindingError::InvalidMaxIter { got: 0 }.into());
+    }
+
+    let mut dynamic_tol = DynamicTolerance::WidthTol { a, b };
+    let mut width_tol   = algorithm.calculate_tolerance(&dynamic_tol, abs_x, rel_x)?;
+    let theoretical_iters = theoretical_iter(a, b, width_tol)?;
 
     let num_iter = match max_iter { 
-        Some(m) => m, 
-        None    => theoretical_iters.min(GLOBAL_MAX_ITER_FALLBACK)
+        Some(v) => v, 
+        None    => theoretical_iters.max(GLOBAL_MAX_ITER_FALLBACK)
     };
 
-    // number of function evaluations 
+    // track function evaluations
     let mut evals = 0; 
 
-    // closure function, checks finiteness  
+    // wraps func, increments evals, enforces finiteness
     let mut eval = |x: f64| -> Result<f64, BisectionError> {
         let fx = { evals += 1; func(x) }; 
         if !fx.is_finite() { 
-            Err(RootFindingError::NonFiniteEvaluation { x, fx }.into()) 
-        } else { 
-            Ok(fx) 
-        }
+            return Err(RootFindingError::NonFiniteEvaluation { x, fx }.into());
+        } 
+        
+        Ok(fx) 
     };
 
-    // immediate bounds are roots
+    // early exit: a is root
     let mut fa = eval(a)?;
     if fa.abs() <= abs_fx { 
-        return Ok(RootReport::Bracket {
-                meta: RootMeta { 
-                root        : a, 
-                f_root      : fa, 
-                iterations  : 0, 
-                evals       : evals,
-                termination : Termination::ToleranceReached, 
-                tolerance   : ToleranceReason::AbsFxReached, 
-                algorithm   : ALGORITHM 
-            }, 
-            left  : a, 
-            right : b, 
+        return Ok(RootFindingReport {
+            root                : a, 
+            f_root              : fa, 
+            iterations          : 0, 
+            evaluations         : evals,
+            termination_reason  : TerminationReason::ToleranceReached, 
+            tolerance_satisfied : ToleranceSatisfied::AbsFxReached,
+            stencil             : Stencil::Bracket { bounds: [a, b] }, 
+            algorithm_name      : algo_name 
         });
-    }
+    } 
+    // early exit: b is root
     let fb = eval(b)?;  
     if fb.abs() <= abs_fx { 
-        return Ok(RootReport::Bracket {
-            meta: RootMeta { 
-                root        : b, 
-                f_root      : fb, 
-                iterations  : 0, 
-                evals       : evals, 
-                termination : Termination::ToleranceReached, 
-                tolerance   : ToleranceReason::AbsFxReached, 
-                algorithm   : ALGORITHM 
-            }, 
-            left  : a, 
-            right : b, 
-        }); 
+        return Ok(RootFindingReport {
+            root                : b, 
+            f_root              : fb, 
+            iterations          : 0, 
+            evaluations         : evals,
+            termination_reason  : TerminationReason::ToleranceReached, 
+            tolerance_satisfied : ToleranceSatisfied::AbsFxReached,
+            stencil             : Stencil::Bracket { bounds: [a, b] }, 
+            algorithm_name      : algo_name 
+        });
     }
 
-    if !opposite_signs(fa, fb) { 
+    // error: no sign change across [a, b]
+    if same_sign(fa, fb) { 
         return Err(BisectionError::NoSignChange { a, b }); 
     } 
 
-    // immediate narrow width success 
-    if b - a <= width_tol0 {
+    // early exit: width tolerance satisfied
+    if b - a <= width_tol {
         let(midpoint, fm) = next_sol_estimate(a, b, &mut eval)?;
-        return Ok(RootReport::Bracket {
-            meta: RootMeta { 
-                root        : midpoint, 
-                f_root      : fm, 
-                iterations  : 0, 
-                evals       : evals, 
-                termination : Termination::ToleranceReached, 
-                tolerance   : ToleranceReason::WidthTolReached, 
-                algorithm   : ALGORITHM 
-            }, 
-            left  : a, 
-            right : b, 
-        }); 
+        return Ok(RootFindingReport {
+            root                : midpoint, 
+            f_root              : fm, 
+            iterations          : 0, 
+            evaluations         : evals,
+            termination_reason  : TerminationReason::ToleranceReached, 
+            tolerance_satisfied : ToleranceSatisfied::WidthTolReached,
+            stencil             : Stencil::Bracket { bounds: [a, b] }, 
+            algorithm_name      : algo_name 
+        });
     }
 
-    // algorithm
+    // main loop 
     let mut midpoint = a;       // gets overwritten 
     let mut fm       = fa;      // gets overwritten
     for iter in 1..=num_iter {
         (midpoint, fm) = next_sol_estimate(a, b, &mut eval)?;  
         
-        // check for abs fx tolerance 
+        // check |f(x)| tolerance 
         if fm.abs() <= abs_fx { 
-            return Ok(RootReport::Bracket {
-                meta: RootMeta { 
-                    root        : midpoint, 
-                    f_root      : fm, 
-                    iterations  : iter, 
-                    evals       : evals, 
-                    termination : Termination::ToleranceReached, 
-                    tolerance   : ToleranceReason::AbsFxReached, 
-                    algorithm   : ALGORITHM 
-                },
-                left  : a, 
-                right : b, 
+            return Ok(RootFindingReport {
+                root                : midpoint, 
+                f_root              : fm, 
+                iterations          : iter, 
+                evaluations         : evals,
+                termination_reason  : TerminationReason::ToleranceReached, 
+                tolerance_satisfied : ToleranceSatisfied::AbsFxReached,
+                stencil             : Stencil::Bracket { bounds: [a, b] }, 
+                algorithm_name      : algo_name 
             });
         }
 
-        // shrink interval
-        if opposite_signs(fa, fm) { 
+        // updated bracket 
+        if opposite_sign(fa, fm) { 
             b = midpoint; 
         } else { 
             a = midpoint; 
             fa = fm; 
         }
 
-        // check for width tolerance 
-        if b - a <= width_tol_current(a, b, abs_x, rel_x) { 
+        // check width tolerance 
+        dynamic_tol = DynamicTolerance::WidthTol { a, b }; 
+        width_tol   = algorithm.calculate_tolerance(&dynamic_tol, abs_x, rel_x)?;
+        if b - a <= width_tol { 
             let (midpoint, fm) = next_sol_estimate(a, b, &mut eval)?;
-            return Ok(RootReport::Bracket {
-                meta: RootMeta { 
-                    root        : midpoint, 
-                    f_root      : fm, 
-                    iterations  : iter, 
-                    evals       : evals, 
-                    termination : Termination::ToleranceReached, 
-                    tolerance   : ToleranceReason::WidthTolReached,
-                    algorithm   : ALGORITHM
-                },
-                left  : a, 
-                right : b, 
-            }); 
+            return Ok(RootFindingReport {
+                root                : midpoint, 
+                f_root              : fm, 
+                iterations          : iter, 
+                evaluations         : evals,
+                termination_reason  : TerminationReason::ToleranceReached, 
+                tolerance_satisfied : ToleranceSatisfied::WidthTolReached,
+                stencil             : Stencil::Bracket { bounds: [a, b] }, 
+                algorithm_name      : algo_name 
+            });
         }        
     }
 
-    Ok(RootReport::Bracket {
-        meta: RootMeta { 
-            root        : midpoint, 
-            f_root      : fm, 
-            iterations  : num_iter, 
-            evals       : evals, 
-            termination : Termination::IterationLimit, 
-            tolerance   : ToleranceReason::ToleranceNotReached,
-            algorithm   : ALGORITHM 
-        }, 
-        left  : a, 
-        right : b, 
+    Ok(RootFindingReport {
+        root                : midpoint, 
+        f_root              : fm, 
+        iterations          : num_iter, 
+        evaluations         : evals,
+        termination_reason  : TerminationReason::IterationLimit, 
+        tolerance_satisfied : ToleranceSatisfied::ToleranceNotReached,
+        stencil             : Stencil::Bracket { bounds: [a, b] }, 
+        algorithm_name      : algo_name 
     })
 }
