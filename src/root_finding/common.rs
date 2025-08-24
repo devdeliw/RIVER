@@ -9,6 +9,7 @@ pub enum Algorithm {
     RegulaFalsiPegasus,
     RegulaFalsiAndersonBjorck,
     Secant,
+    Newton, 
 }
 impl Algorithm {
     /// Hard cap on automatically computed iteration counts for methods.
@@ -19,7 +20,7 @@ impl Algorithm {
     /// └ Methods with theoretical iteration limits (e.g. [`Algorithm::Bisection`])  
     ///   return `0` here, meaning "compute theoretical bound instead". 
     ///     ├ If the theoretical limit is too large practically, 
-    ///     └ [`DEFAULT_MAX_ITER_FALLBACK`] fallback is used instead.
+    ///     └ [`GLOBAL_MAX_ITER_FALLBACK`] fallback is used instead.
     pub const fn default_max_iter(self) -> usize {
         match self {
             Algorithm::Bisection                 => 0,   // theoretical limit
@@ -28,6 +29,7 @@ impl Algorithm {
             Algorithm::RegulaFalsiPegasus        => 100,
             Algorithm::RegulaFalsiAndersonBjorck => 100,
             Algorithm::Secant                    => 100,
+            Algorithm::Newton                    => 50,
         }
     }
 
@@ -40,6 +42,7 @@ impl Algorithm {
             Algorithm::RegulaFalsiPegasus        => "regula_falsi_pegasus",
             Algorithm::RegulaFalsiAndersonBjorck => "regula_falsi_anderson_bjorck",
             Algorithm::Secant                    => "secant",
+            Algorithm::Newton                    => "newton",
         }
     }
 }
@@ -51,7 +54,6 @@ impl std::fmt::Display for Algorithm {
 
 /// Global hard cap on iterations, applied if a method’s theoretical
 /// or heuristic default would otherwise exceed this value.
-///
 pub const GLOBAL_MAX_ITER_FALLBACK: usize = 500;
 
 
@@ -90,8 +92,8 @@ pub struct RootMeta {
 /// ├ [`RootReport::TwoPoint`]  
 /// │   Two-point methods (e.g. secant)  
 /// │   ├ `meta`   : [`RootMeta`] (common fields)  
-/// │   ├ `curr`   : Final iterate xₙ.  
-/// │   └ `prev`   : Previous iterate xₙ₋₁.  
+/// │   ├ `parent1` : The most recent iterate before calculating the root
+/// │   └ `parent2` : The one before `parent1` 
 /// │
 /// └ [`RootReport::MultiPoint`]  
 ///     Multi-point methods (e.g. inverse quadratic interpolation)  
@@ -407,7 +409,7 @@ pub(crate) fn width_tol_current(a: f64, b: f64, abs_x: f64, rel_x: f64) -> f64 {
 ///
 /// Only used for Open methods for root-finding. 
 pub(crate) fn step_tol_current(x: f64, abs_x: f64, rel_x: f64) -> f64 { 
-    abs_x + rel_x * x.abs()
+    abs_x + rel_x * x.abs().max(1.0)
 }
 
 
