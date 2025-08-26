@@ -3,20 +3,20 @@
 //! Provides types and helpers for computing stopping tolerances
 //! consistently across algorithm categories.
 //!
-//! [`DynamicTolerance`] : method-specific per-iteration tolerance  
-//! ├ `WidthTol(a, b)` : bracketing methods  
-//! └ `StepTol(x)`     : open methods  
+//! `DynamicTolerance` : method-specific per-iteration tolerance  
+//! - `WidthTol(a, b)` : bracketing methods  
+//! - `StepTol(x)`     : open methods  
 //!
 //! Each [`Algorithm`] variant enforces that only the correct dynamic
-//! tolerance type is used via [`Algorithm::calculate_tolerance`].
+//! tolerance type is used via `calculate_tolerance`.
 
 
 use super::errors::ToleranceError;  
 use super::algorithms::Algorithm;
 
 
-/// Bracketing methods use [`DynamicTolerance::WidthTol`] 
-/// Open methods       use [`DynamicTolerance::StepTol`] 
+/// Bracketing methods use DynamicTolerance::WidthTol 
+/// Open methods       use DynamicTolerance::StepTol
 /// Compound methods   use both 
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum DynamicTolerance { 
@@ -32,25 +32,22 @@ impl DynamicTolerance {
 
 impl Algorithm {
     /// Compute the method-specific dynamic tolerance for an algorithm.
-    /// ├ [`Algorithm::Bracket`] methods ([`DynamicTolerance::WidthTol`]):  
-    /// │ `abs_x + rel_x * max(|a|, |b|, 1.0)`
-    /// │
-    /// ├ [`Algorithm::Open`] methods ([`DynamicTolerance::StepTol`]): 
-    /// │ `abs_x + rel_x * max(|x|, 1.0)` 
-    /// │
-    /// └ [`Algorithm::Compound`] methods can do both 
+    /// - [`Algorithm::Bracket`] methods ([`DynamicTolerance::WidthTol`]):  
+    ///   `abs_x + rel_x * max(|a|, |b|, 1.0)`
+    /// - [`Algorithm::Open`] methods ([`DynamicTolerance::StepTol`]): 
+    ///   `abs_x + rel_x * max(|x|, 1.0)` 
+    /// - [`Algorithm::Compound`] methods can do both 
     ///
     /// # Notes 
-    /// ├ For open methods the effective step tolerance is the *maximum* tolerance
-    /// │ across all iterates `x` that contribute to the next root estimate, not
-    /// │ just the most recent one.
-    /// │ 
-    /// └ For open methods that only use one iterate to calculate the next estimate 
+    /// - For open methods the effective step tolerance is the *maximum* tolerance
+    ///   across all iterates `x` that contribute to the next root estimate, not
+    ///   just the most recent one.
+    /// - For open methods that only use one iterate to calculate the next estimate 
     ///   (e.g. newton), the effective step tolerance is still the *maximum* tolerance 
     ///   between two consecutive estimates. 
     ///
     /// # Errors 
-    /// └ Returns a [`ToleranceError`] if the tolerance type does not 
+    /// - Returns a [`ToleranceError`] if the tolerance type does not 
     ///   match the algorithm type (e.g. width tolerance for an open method) 
     ///   or if the result is invalid (non-finite or <= 0).
     pub(crate) fn calculate_tolerance( 

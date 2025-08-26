@@ -1,3 +1,5 @@
+//! Newton-Rapshon method
+
 use super::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
@@ -39,15 +41,15 @@ pub enum NewtonError {
 /// Newton configuration.
 /// 
 /// # Fields
-/// ├ `common`   : [`CommonCfg`] with tolerances and optional `max_iter`.
-/// └ `max_step` : optional limit on the absolute Newton step (default: ∞).
+/// - `common`   : [`CommonCfg`] with tolerances and optional `max_iter`.
+/// - `max_step` : optional limit on the absolute Newton step (default: ∞).
 ///
 /// # Construction
-/// ├ Use [`NewtonCfg::new`] then optional setters from [`impl_common_cfg`].
-/// └ Set an explicit step cap via [`NewtonCfg::set_max_step`] (must be > 0).
+/// - Use [`NewtonCfg::new`] then optional setters.
+/// - Set an explicit step cap via [`NewtonCfg::set_max_step`] (must be > 0).
 ///
 /// # Defaults
-/// └ If `common.max_iter` is `None`, [`newton`] resolves it using
+/// - If `common.max_iter` is `None`, [`newton`] resolves it using
 ///   [`Algorithm::default_max_iter`] for [`OpenFamily::Newton`], or
 ///   [`GLOBAL_MAX_ITER_FALLBACK`] if unavailable.
 #[derive(Debug, Copy, Clone)] 
@@ -99,9 +101,9 @@ fn next_down(x: f64) -> f64 {
 
 
 /// Helpers 
-/// ├ `eval_fx_checked`   : evaluates `f(x)` with finite-check
-/// ├ `eval_dfx_analytic` : evaluates user-supplied derivative `df(x)` 
-/// └ `eval_dfx_fd`       : central finite-difference with ULP rescue  
+/// - `eval_fx_checked`   : evaluates `f(x)` with finite-check
+/// - `eval_dfx_analytic` : evaluates user-supplied derivative `df(x)` 
+/// - `eval_dfx_fd`       : central finite-difference with ULP rescue  
 #[inline] 
 fn eval_fx_checked<F>(
     f: &mut F, 
@@ -305,61 +307,58 @@ where
 /// Supports analytic derivatives or a central finite-difference fallback.
 ///
 /// # Arguments
-/// ├ `func`  : function whose root is sought
-/// ├ `dfunc` : optional analytic derivative; if `None`, use finite-difference
-/// ├ `x0`    : finite initial guess
-/// └ `cfg`   : [`NewtonCfg`] (tolerances, optional `max_iter`, optional `max_step`)
+/// - `func`  : function whose root is sought
+/// - `dfunc` : optional analytic derivative; if `None`, use finite-difference
+/// - `x0`    : finite initial guess
+/// - `cfg`   : [`NewtonCfg`] (tolerances, optional `max_iter`, optional `max_step`)
 ///
 /// # Returns
 /// [`RootFindingReport`] with:
-/// ├ `root`                : approximate root
-/// ├ `f_root`              : function value at `root`
-/// ├ `iterations`          : number of iterations performed
-/// ├ `evaluations`         : total evaluations (f and f')
-/// ├ `termination_reason`  : why it stopped
-/// ├ `tolerance_satisfied` : which tolerance triggered 
-/// ├ `stencil`             : previous iterate used to form the step
-/// └ `algorithm_name`      : "newton"
+/// - `root`                : approximate root
+/// - `f_root`              : function value at `root`
+/// - `iterations`          : number of iterations performed
+/// - `evaluations`         : total evaluations (f and f')
+/// - `termination_reason`  : why it stopped
+/// - `tolerance_satisfied` : which tolerance triggered 
+/// - `stencil`             : previous iterate used to form the step
+/// - `algorithm_name`      : "newton"
 ///
 /// # Errors
-/// ├ [`NewtonError::InvalidGuess`]                 : `x0` non-finite
-/// ├ [`NewtonError::InvalidMaxStep`]               : `max_step <= 0` or NaN
-/// ├ [`NewtonError::StepNotFinite`]                : `x + step` not representable
-/// ├ [`NewtonError::DerivativeTooSmall`]           : derivative too small for a reliable step
-/// ├ [`NewtonError::DerivativeNotFinite`]          : derivative non-finite
-/// ├ [`NewtonError::FiniteDifferenceStepUnrepresentable`]  : FD step unrepresentable near `x`
-/// │ 
+/// - [`NewtonError::InvalidGuess`]                 : `x0` non-finite
+/// - [`NewtonError::InvalidMaxStep`]               : `max_step <= 0` or NaN
+/// - [`NewtonError::StepNotFinite`]                : `x + step` not representable
+/// - [`NewtonError::DerivativeTooSmall`]           : derivative too small for a reliable step
+/// - [`NewtonError::DerivativeNotFinite`]          : derivative non-finite
+/// - [`NewtonError::FiniteDifferenceStepUnrepresentable`]  : FD step unrepresentable near `x`
+///  
 /// * Propagated via [`NewtonError::RootFinding`]:
-/// ├ [`RootFindingError::NonFiniteEvaluation`]     : `f(x)` produced NaN/inf
-/// ├ [`RootFindingError::InvalidMaxIter`]          : `max_iter = 0`
-/// │
+/// - [`RootFindingError::NonFiniteEvaluation`]     : `f(x)` produced NaN/inf
+/// - [`RootFindingError::InvalidMaxIter`]          : `max_iter = 0`
+/// 
 /// * Propagated via [`NewtonError::Tolerance`]: 
-/// ├ [`ToleranceError::InvalidAbsFx`]              : `abs_fx` <= 0.0 or inf 
-/// ├ [`ToleranceError::InvalidAbsX`]               : `abs_x`  <  0.0 or inf 
-/// ├ [`ToleranceError::InvalidRelX`]               : `rel_x`  <  0.0 or inf 
-/// └ [`ToleranceError::InvalidAbsRelX`]            : both `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]              : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]               : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]               : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`]            : both `abs_x` and `rel_x` not > 0.
 
 /// # Behavior
-/// ├ Derivat   ive:
-/// │   ├ analytic path uses `df(x)`
-/// │   └ FD path uses central finite-difference with `h = eps^{1/3} * max(|x|, 1)`,
-/// │     rescued by ULP nudges (`next_up/down`) if `x +/- h` collapses.
-/// │
-/// ├ Step:
-/// │   ├ raw step `-f/df` is computed; if non-finite, errors
-/// │   └ step is clipped to `max_step` if provided
-/// │
-/// ├ Stagnation: if `x + step == x`, returns [`TerminationReason::MachinePrecisionReached`]
-/// │
-/// └ Report:
+/// - Derivative:
+///     - analytic path uses `df(x)`
+///     - FD path uses central finite-difference with `h = eps^{1/3} * max(|x|, 1)`,
+///       rescued by ULP nudges (`next_up/down`) if `x +/- h` collapses.
+/// - Step:
+///     - raw step `-f/df` is computed; if non-finite, errors
+///     - step is clipped to `max_step` if provided
+/// - Stagnation: if `x + step == x`, returns [`TerminationReason::MachinePrecisionReached`]
+/// - Report:
 ///     `stencil` is the previous iterate used to form the last step; on
 ///     immediate success at `x0`, it equals `x0`; on iteration limit, it is the
 ///     last iterate; on machine stagnation it equals the root. 
 ///
 /// # Notes
-/// ├ Quadratic convergence requires a good initial guess and smooth `f`
-/// ├ For guaranteed convergence, prefer a bracketed method (e.g., bisection)
-/// └ Convergence is *local only* and depends on a good initial guess `x0` and
+/// - Quadratic convergence requires a good initial guess and smooth `f`
+/// - For guaranteed convergence, prefer a bracketed method (e.g., bisection)
+/// - Convergence is *local only* and depends on a good initial guess `x0` and
 ///   smoothness of `f`. Poor guesses or ill-behaved functions can diverge or cycle.
 ///   For guaranteed convergence, use a **bracketed method** (e.g. bisection/Brent)
 pub fn newton<F, G>( 

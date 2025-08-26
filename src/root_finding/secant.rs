@@ -1,3 +1,5 @@
+//! Secant method
+
 use super::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
@@ -25,13 +27,13 @@ pub enum SecantError{
 /// Secant configuration 
 ///
 /// # Fields 
-/// └ `common` : [`CommonCfg`] with tolerances and optional `max_iter`.
+/// - `common` : [`CommonCfg`] with tolerances and optional `max_iter`.
 ///
 /// # Construction 
-/// └ Use [`SecantCfg::new`] then optional setters from [`impl_common_cfg`]. 
+/// - Use [`SecantCfg::new`] then optional setters. 
 ///
 /// # Defaults 
-/// └ If `common.max_iter` is `None`, [`secant`] resolves it using 
+/// - If `common.max_iter` is `None`, [`secant`] resolves it using 
 ///   [`Algorithm::default_max_iter`] for [`OpenFamily::Secant`], or 
 ///   [`GLOBAL_MAX_ITER_FALLBACK`] if unavailable. 
 #[derive(Debug, Copy, Clone)]
@@ -52,12 +54,12 @@ impl_common_cfg!(SecantCfg);
 /// connecting `(x1, fx1)` and `(x2, fx2)` 
 ///
 /// # Arguments 
-/// ├ `(x1, fx1)` : secant endpoint 1 and function value
-/// └ `(x2, fx2)` : secant endpoint 2 and function value 
+/// - `(x1, fx1)` : secant endpoint 1 and function value
+/// - `(x2, fx2)` : secant endpoint 2 and function value 
 ///
 /// # Returns 
-/// ├ `Ok(x_secant)` if denominator `fx2 - fx1` is well-scaled 
-/// └ `Err(DegenerateSecantStep)` if denominator is too small. 
+/// - `Ok(x_secant)` if denominator `fx2 - fx1` is well-scaled 
+/// - `Err(DegenerateSecantStep)` if denominator is too small. 
 #[inline]
 pub(crate) fn calculate_secant_x_intercept(
     (x1, fx1): (f64, f64), 
@@ -79,14 +81,14 @@ pub(crate) fn calculate_secant_x_intercept(
 /// connecting `(x1, fx1)` and `(x2, fx2)` and its function eval 
 ///
 /// # Arguments 
-/// ├ `(x1, fx1)` : secant endpoint 1 and function value
-/// ├ `(x2, fx2)` : secant endpoint 2 and function value 
-/// └ `eval`      : function closure defined in [`secant`]
+/// - `(x1, fx1)` : secant endpoint 1 and function value
+/// - `(x2, fx2)` : secant endpoint 2 and function value 
+/// - `eval`      : function closure defined in [`secant`]
 ///
 /// # Returns 
-/// ├ `Ok(x_next, f(x_next))`     : if denominator `fx2 - fx1` is well-scaled 
-/// └ `Err(DegenerateSecantStep)` : if denominator is too small 
-///     └ *Handled internally. Replaces with a bisection step.*   
+/// - `Ok(x_next, f(x_next))`     : if denominator `fx2 - fx1` is well-scaled 
+/// - `Err(DegenerateSecantStep)` : if denominator is too small 
+///     - *Handled internally. Replaces with a bisection step.*   
 #[inline] 
 fn next_sol_estimate<F> (
     (x1, fx1): (f64, f64), 
@@ -110,13 +112,13 @@ where F: FnMut(f64) -> Result<f64, SecantError> {
 /// using the two points (stencil) used in the update formula.  
 ///
 /// # Arguments 
-/// ├ `x1`/`x2`         : x-values used in update formula 
-/// ├ `abs_x`/`rel_x`   : absolute and relative tolerance 
-/// └ `algorithm`       : [`Algorithm::Open`] with [`OpenFamily::Secant`]
+/// - `x1`/`x2`         : x-values used in update formula 
+/// - `abs_x`/`rel_x`   : absolute and relative tolerance 
+/// - `algorithm`       : [`Algorithm::Open`] with [`OpenFamily::Secant`]
 ///
 /// # Returns 
-/// ├ `Ok(step_tol)` : if tolerance finite and > 0 
-/// └ `Err(ToleranceError::InvalidTolerance)` if tolerance non-finite or <= 0
+/// - `Ok(step_tol)` : if tolerance finite and > 0 
+/// - `Err(ToleranceError::InvalidTolerance)` if tolerance non-finite or <= 0
 #[inline]
 fn step_tolerance(
     x1: f64, 
@@ -144,57 +146,55 @@ fn step_tolerance(
 /// [secant method](https://en.wikipedia.org/wiki/Secant_method).
 ///
 /// # Arguments
-/// ├ `func` : The function whose root is to be found
-/// ├ `x0`   : First initial guess.  Must be finite and not equal to `x1`
-/// ├ `x1`   : Second initial guess. Must be finite and not equal to `x0`
-/// └ `cfg`  : [`SecantCfg`] (tolerances, optional `max_iter`)
+/// - `func` : The function whose root is to be found
+/// - `x0`   : First initial guess.  Must be finite and not equal to `x1`
+/// - `x1`   : Second initial guess. Must be finite and not equal to `x0`
+/// - `cfg`  : [`SecantCfg`] (tolerances, optional `max_iter`)
 ///
 /// # Returns
 /// [`RootFindingReport`] with 
-/// ├ `root`                : approximate root
-/// ├ `f_root`              : function value at `root`
-/// ├ `iterations`          : number of iterations performed
-/// ├ `evaluations`         : total function evaluations 
-/// ├ `termination_reason`  : why it stopped
-/// ├ `tolerance_satisfied` : which tolerance triggered
-/// ├ `stencil`             : previous iterates used to form the step
-/// └ `algorithm_name`      : "secant"
+/// - `root`                : approximate root
+/// - `f_root`              : function value at `root`
+/// - `iterations`          : number of iterations performed
+/// - `evaluations`         : total function evaluations 
+/// - `termination_reason`  : why it stopped
+/// - `tolerance_satisfied` : which tolerance triggered
+/// - `stencil`             : previous iterates used to form the step
+/// - `algorithm_name`      : "secant"
 ///
 /// # Errors
-/// ├ [`SecantError::InvalidGuess`]             : `x0` or `x1` is NaN/inf or equal
-/// │
+/// - [`SecantError::InvalidGuess`]             : `x0` or `x1` is NaN/inf or equal
+/// 
 /// * Propagated via [`SecantError::RootFinding`]
-/// ├ [`RootFindingError::NonFiniteEvaluation`] : `f(x)` produced NaN/inf
-/// ├ [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
-/// │
+/// - [`RootFindingError::NonFiniteEvaluation`] : `f(x)` produced NaN/inf
+/// - [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
+/// 
 /// * Propagated via [`SecantError::Tolerance`] 
-/// ├ [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf
-/// ├ [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
-/// ├ [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
-/// └ [`ToleranceError::InvalidAbsRelX`]        : both `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf
+/// - [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`]        : both `abs_x` and `rel_x` not > 0.
 ///
 /// # Behavior
-/// ├ Update:
-/// │   ├ secant step: 
-/// │   │ x_{k+1} = x_k - f(x_k) * (x_k - x_{k-1}) / (f(x_k) - f(x_{k-1}))
-/// │   └ denominator collapse (f(x_k) ~ f(x_{k-1})) triggers a safeguard:
-/// │     fall back to a half-step between x_k and x_{k-1}
-/// │
-/// ├ Tolerances: 
-/// │   ├ if |x_{k+1} - x_k| <= tolerance, return with [`ToleranceSatisfied::StepSizeReached`]
-/// │   └ if |f(x_k)| <= abs_fx at any stage, [`ToleranceSatisfied::AbsFxReached`]
-/// │
-/// └ Stencil:
-///     └ stores the pair of previous iterates {x_{k-1}, x_k}
+/// - Update:
+///     - secant step: 
+///       x_{k+1} = x_k - f(x_k) * (x_k - x_{k-1}) / (f(x_k) - f(x_{k-1}))
+///     - denominator collapse (f(x_k) ~ f(x_{k-1})) triggers a safeguard:
+///       fall back to a half-step between x_k and x_{k-1}
+/// - Tolerances: 
+///     - if |x_{k+1} - x_k| <= tolerance, return with [`ToleranceSatisfied::StepSizeReached`]
+///     - if |f(x_k)| <= abs_fx at any stage, [`ToleranceSatisfied::AbsFxReached`]
+/// - Stencil:
+///     - stores the pair of previous iterates {x_{k-1}, x_k}
 ///       used to form the last secant step; on immediate success
 ///       both entries are the initial guesses.
 ///
 /// # Notes
-/// └ Convergence is superlinear (~1.618) near simple roots but requires two
+/// - Convergence is superlinear (~1.618) near simple roots but requires two
 ///   distinct starting guesses.
 ///
 /// # Warning 
-/// └ Poor initial guesses may lead to divergence or extremely slow convergence.
+/// - Poor initial guesses may lead to divergence or extremely slow convergence.
 ///   For guaranteed convergence, use a **bracketed method** (e.g. bisection/Brent)
 #[must_use]
 pub fn secant<F> ( 

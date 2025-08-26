@@ -4,10 +4,10 @@
 //! used by all root-finding configs.
 //!
 //! [`CommonCfg`] — universal fields  
-//! ├ `abs_fx`   : function-value tolerance  
-//! ├ `abs_x`    : absolute step/width tolerance  
-//! ├ `rel_x`    : relative step/width tolerance  
-//! └ `max_iter` : iteration cap (optional) 
+//! - `abs_fx`   : function-value tolerance  
+//! - `abs_x`    : absolute step/width tolerance  
+//! - `rel_x`    : relative step/width tolerance  
+//! - `max_iter` : iteration cap (optional) 
 //!
 //! [`CommonCfg::new`] initializes configuration with default values. 
 //!

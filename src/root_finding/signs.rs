@@ -1,7 +1,6 @@
 //! Sign utilities for root-finding algorithms.
-//!
-//! ┌ [`opposite_signs`] : `true` if values have opposite sign  
-//! └ [`same_sign`]      : `true` if values share the same sign
+//! - `opposite_sign` : `true` if values have opposite sign  
+//! - `same_sign`     : `true` if values share the same sign
 
 
 /// Returns `true` if `x` and `y` have opposite signs.

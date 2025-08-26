@@ -1,16 +1,14 @@
 //! Root-finding error types.  
 //! 
-//! ┌ [`AlgorithmError`]   : algorithm misuse  
-//! │  └ incompatible algorithm variant selection
-//! │
-//! ├ [`RootFindingError`] : common runtime errors  
-//! │   ├ non-finite function evaluation  
-//! │   └ invalid global parameters (e.g. max_iter) 
-//! │
-//! └ [`ToleranceError`]   : tolerance-related errors  
-//!     ├ invalid input tolerances  
-//!     ├ invalid or non-finite computed tolerances  
-//!     └ mismatched tolerance type vs. algorithm ([`Algorithm`])  
+//! - [`AlgorithmError`]   : algorithm misuse  
+//!    - incompatible algorithm variant selection
+//! - [`RootFindingError`] : common runtime errors  
+//!     - non-finite function evaluation  
+//!     - invalid global parameters (e.g. max_iter) 
+//! - [`ToleranceError`]   : tolerance-related errors  
+//!     - invalid input tolerances  
+//!     - invalid or non-finite computed tolerances  
+//!     - mismatched tolerance type vs. algorithm ([`Algorithm`])  
 
 
 use thiserror::Error; 
@@ -18,7 +16,6 @@ use super::algorithms::Algorithm;
 
 
 /// Algorithm selection errors.  
-/// 
 /// - Raised when an algorithm variant is requested that 
 ///   is not valid for the given runner.
 #[derive(Debug, Error)]
@@ -29,9 +26,8 @@ pub enum AlgorithmError {
 
 
 /// Root-finding runtime errors.  
-/// 
-/// ┌ Non-finite function evaluation  
-/// └ Invalid global configuration (e.g. max_iter < 1)
+/// - Non-finite function evaluation  
+/// - Invalid global configuration (e.g. max_iter < 1)
 #[derive(Debug, Error)]
 pub enum RootFindingError {
     #[error("function non-finite at x={x}, f(x)={fx}")]
@@ -43,10 +39,9 @@ pub enum RootFindingError {
 
 
 /// Tolerance configuration and evaluation errors.  
-/// 
-/// ┌ Invalid input tolerances (`abs_fx`, `abs_x`, `rel_x`)  
-/// ├ Computed tolerance invalid (<= 0 or non-finite)  
-/// └ Mismatched tolerance type vs. algorithm
+/// - Invalid input tolerances (`abs_fx`, `abs_x`, `rel_x`)  
+/// - Computed tolerance invalid (<= 0 or non-finite)  
+/// - Mismatched tolerance type vs. algorithm
 #[derive(Debug, Error)]
 pub enum ToleranceError { 
     #[error("invalid `abs_fx` tolerance: must be finite and > 0. got {got}")]

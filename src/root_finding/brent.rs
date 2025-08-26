@@ -1,3 +1,5 @@
+//! Brent's method
+
 use super::algorithms::{Algorithm, CompoundFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
@@ -27,15 +29,15 @@ pub enum BrentError {
 /// Brent's Configuration 
 /// 
 /// # Fields 
-/// └ `common` : [`CommonCfg`] with tolerances and optional `max_iter`. 
+/// - `common` : [`CommonCfg`] with tolerances and optional `max_iter`. 
 ///
 /// # Construction 
-/// └ Use [`BrentCfg::new`] then optional setters from [`impl_common_cfg`]. 
+/// - Use [`BrentCfg::new`] then optional setters. 
 ///
 /// # Defaults 
-/// └ If `common.max_iter` is `None`, [`brent`] resolves it using the 
+/// - If `common.max_iter` is `None`, [`brent`] resolves it using the 
 ///   worst-case theoretical number of iterations using pure bisection
-///   from [`theoretical_iter`] using the initial window.
+///   from using the initial window.
 #[derive(Debug, Copy, Clone)] 
 pub struct BrentCfg { 
     common: CommonCfg
@@ -64,13 +66,13 @@ fn near_equal(x: f64, y: f64) -> bool {
 /// a candidate `s = b + p/qd`. Rejects non-finite/degenerate inputs.
 ///
 /// # Arguments
-/// ├ `(a, fa)` : `a` and function value `f(a)`
-/// ├ `(b, fb)` : `b` (current best) and value `f(b)`
-/// └ `(c, fc)` : `c` (previous) and value `f(c)`
+/// - `(a, fa)` : `a` and function value `f(a)`
+/// - `(b, fb)` : `b` (current best) and value `f(b)`
+/// - `(c, fc)` : `c` (previous) and value `f(c)`
 ///
 /// # Returns
-/// ├ `Some(s)` : finite IQI estimate
-/// └ `None`    : invalid inputs (non-finite, duplicate points, fa~fb~fc degeneracy,
+/// - `Some(s)` : finite IQI estimate
+/// - `None`    : invalid inputs (non-finite, duplicate points, fa~fb~fc degeneracy,
 ///               zero/inf/NaN denominator, or non-finite result)
 #[inline] 
 fn iqi(
@@ -117,12 +119,12 @@ fn iqi(
 /// Rejects non-finite inputs and (near-)parallel secant.
 ///
 /// # Arguments
-/// ├ `(a, fa)`  : `a` and function value `f(a)`
-/// └ `(b, fb)` : `b` and function value `f(b)`
+/// - `(a, fa)`  : `a` and function value `f(a)`
+/// - `(b, fb)` : `b` and function value `f(b)`
 ///
 /// # Returns
-/// ├ `Some(s)`  : finite secant intersection
-/// └ `None`     : invalid inputs or degenerate denominator / non-finite result
+/// - `Some(s)`  : finite secant intersection
+/// - `None`     : invalid inputs or degenerate denominator / non-finite result
 #[inline]
 fn secant( 
     (a, fa): (f64, f64), 
@@ -150,13 +152,13 @@ fn secant(
 /// This guards against overly aggressive extrapolation.
 ///
 /// # Arguments
-/// ├ `a`     : bracket endpoint A
-/// ├ `b`     : bracket endpoint B
-/// └ `s`     : proposed root
+/// - `a`     : bracket endpoint A
+/// - `b`     : bracket endpoint B
+/// - `s`     : proposed root
 ///
 /// # Returns
-/// ├ `true`  : `s` is strictly inside the interior window
-/// └ `false` : otherwise
+/// - `true`  : `s` is strictly inside the interior window
+/// - `false` : otherwise
 #[inline] 
 fn interior_window_ok(a: f64, b: f64, s: f64) -> bool { 
     let lower = (3.0 * a + b) / 4.0; 
@@ -175,44 +177,44 @@ fn interior_window_ok(a: f64, b: f64, s: f64) -> bool {
 /// within the interval.
 ///
 /// # Arguments
-/// ├ `func` : function to evaluate
-/// ├ `a`    : lower bound of the initial bracket (finite)
-/// ├ `b`    : upper bound of the initial bracket (finite, strictly greater than `a`)
-/// └ `cfg`  : [`BrentCfg`] (tolerances; optional max_iter)
+/// - `func` : function to evaluate
+/// - `a`    : lower bound of the initial bracket (finite)
+/// - `b`    : upper bound of the initial bracket (finite, strictly greater than `a`)
+/// - `cfg`  : [`BrentCfg`] (tolerances; optional max_iter)
 ///
 /// # Returns
 /// [`RootFindingReport`] with
-/// ├ `root`                : final root
-/// ├ `f_root`              : function value at `root`
-/// ├ `iterations`          : iterations performed
-/// ├ `evaluations`         : total function evaluations
-/// ├ `termination_reason`  : why it stopped
-/// ├ `tolerance_satisfied` : which tolerance triggered or not reached
-/// ├ `stencil`             : bracket snapshot at termination
-/// └ `algorithm_name`      : "brent"
+/// - `root`                : final root
+/// - `f_root`              : function value at `root`
+/// - `iterations`          : iterations performed
+/// - `evaluations`         : total function evaluations
+/// - `termination_reason`  : why it stopped
+/// - `tolerance_satisfied` : which tolerance triggered or not reached
+/// - `stencil`             : bracket snapshot at termination
+/// - `algorithm_name`      : "brent"
 ///
 /// # Errors
-/// ├ [`BrentError::InvalidBounds`]        : `a`/`b` non-finite or `a >= b`
-/// ├ [`BrentError::NoSignChange`]         : f(a) and f(b) share sign on [a, b]
-/// │
+/// - [`BrentError::InvalidBounds`]        : `a`/`b` non-finite or `a >= b`
+/// - [`BrentError::NoSignChange`]         : f(a) and f(b) share sign on [a, b]
+///  
 /// * Propagated via [`BrentError::RootFinding`]
-/// ├ [`RootFindingError::NonFiniteEvaluation`] : f(x) produced NaN/inf
-/// ├ [`RootFindingError::InvalidMaxIter`]      : cfg.common.max_iter = Some(0)
-/// │
+/// - [`RootFindingError::NonFiniteEvaluation`] : f(x) produced NaN/inf
+/// - [`RootFindingError::InvalidMaxIter`]      : cfg.common.max_iter = Some(0)
+/// 
 /// * Propagated via [`BrentError::Tolerance`]
-/// ├ [`ToleranceError::InvalidAbsFx`]      : `abs_fx` <= 0.0 or inf 
-/// ├ [`ToleranceError::InvalidAbsX`]       : `abs_x`  <  0.0 or inf 
-/// ├ [`ToleranceError::InvalidRelX`]       : `rel_x`  <  0.0 or inf 
-/// └ [`ToleranceError::InvalidAbsRelX`]    : one of `abs_x` and `rel_x` not > 0
+/// - [`ToleranceError::InvalidAbsFx`]      : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]       : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]       : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`]    : one of `abs_x` and `rel_x` not > 0
 /// 
 /// # Notes
-/// ├ Globally convergent for continuous f with a valid sign-change bracket.
-/// ├ Typically superlinear near simple roots and often as fast as Newton.
-/// └ May reduce to linear if interpolation is repeatedly rejected.
+/// - Globally convergent for continuous f with a valid sign-change bracket.
+/// - Typically superlinear near simple roots and often as fast as Newton.
+/// - May reduce to linear if interpolation is repeatedly rejected.
 ///
 /// # Warning
-/// ├ Even if `(b - a)` already meets interval tolerance, a sign change is required. 
-/// └ Very wide or poorly placed initial brackets, flat regions, or near-multiple roots can slow
+/// - Even if `(b - a)` already meets interval tolerance, a sign change is required. 
+/// - Very wide or poorly placed initial brackets, flat regions, or near-multiple roots can slow
 ///   progress; ensure a tight, genuine sign-change bracket when possible.
 pub fn brent<F> ( 
     mut func: F, 

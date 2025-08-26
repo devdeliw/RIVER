@@ -1,3 +1,5 @@
+// False position methods
+
 use super::algorithms::{Algorithm, BracketFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
@@ -29,16 +31,16 @@ pub enum RegulaFalsiError {
 /// RegulaFalsi configuration 
 ///
 /// # Fields 
-/// ├ `common`  : [`CommonCfg`] with tolerances and optional `max_iter`. 
-/// └ `variant` : [`BracketFamily`] specfying which regula falsi variant.  
+/// - `common`  : [`CommonCfg`] with tolerances and optional `max_iter`. 
+/// - `variant` : [`BracketFamily`] specfying which regula falsi variant.  
 ///
 /// # Construction 
-/// ├ Use [`RegulaFalsiCfg::new`] then optional setters from [`impl_common_cfg`]. 
-/// └ Set an explicit step cap via [`RegulaFalsiCfg::set_variant`].
+/// - Use [`RegulaFalsiCfg::new`] then optional setters. 
+/// - Set an explicit step cap via [`RegulaFalsiCfg::set_variant`].
 ///
 /// # Defaults 
-/// ├ `variant` is by default [`BracketFamily::RegulaFalsiIllinois`]
-/// └ If `common.max_iter` is `None`, [`regula_falsi`] resolves it using 
+/// - `variant` is by default [`BracketFamily::RegulaFalsiIllinois`]
+/// - If `common.max_iter` is `None`, [`regula_falsi`] resolves it using 
 ///   [`Algorithm::default_max_iter`] for the associated `variant`, or 
 ///   [`GLOBAL_MAX_ITER_FALLBACK`] if unavailable. 
 #[derive(Debug, Copy, Clone)] 
@@ -81,12 +83,12 @@ impl_common_cfg!(RegulaFalsiCfg);
 /// connecting `(a, fa)` and `(b, fb)` 
 ///
 /// # Arguments 
-/// ├ `(a, fa)` - left endpoint and function value 
-/// └ `(b, fb)` - right endpoint and function value
+/// - `(a, fa)` - left endpoint and function value 
+/// - `(b, fb)` - right endpoint and function value
 ///
 /// # Returns 
-/// ├ `Ok(x_secant)` if denominator `fb - fa` is well-scaled 
-/// └ `Err(RegulaFalsiError::DegenerateSecantStep)` if denominator is too small. 
+/// - `Ok(x_secant)` if denominator `fb - fa` is well-scaled 
+/// - `Err(RegulaFalsiError::DegenerateSecantStep)` if denominator is too small. 
 ///    this is *handled internally* in [`next_sol_estimate`]; replaces with bisection. 
 #[inline]
 fn secant_x_intercept(
@@ -108,14 +110,14 @@ fn secant_x_intercept(
 /// connecting `(a, fa)` and `(b, fb)` and its function value.
 ///
 /// # Arguments 
-/// ├ `(a, fa)` - left endpoint and function value 
-/// ├ `(b, fb)` - right endpoint and function value
-/// └ `eval`    - function; made by default with finite checks 
+/// - `(a, fa)` - left endpoint and function value 
+/// - `(b, fb)` - right endpoint and function value
+/// - `eval`    - function; made by default with finite checks 
 ///
 /// # Returns 
-/// ├ `Ok(x_secant)` if denominator `fb - fa` is well-scaled otherwise 
-/// │ `Ok(midpoint)` having defaulted to a bisection.
-/// └ `Err(RegulaFalsiError::RootFinding(RootFindingError::NonFiniteEvaluation))` 
+/// - `Ok(x_secant)` if denominator `fb - fa` is well-scaled otherwise 
+///   `Ok(midpoint)` having defaulted to a bisection.
+/// - `Err(RegulaFalsiError::RootFinding(RootFindingError::NonFiniteEvaluation))` 
 ///    if the function evaluation is non-finite. 
 #[inline] 
 fn next_sol_estimate<F> (
@@ -144,78 +146,73 @@ where F: FnMut(f64) -> Result<f64, RegulaFalsiError> {
 ///
 /// Four variants of regula falsi root-finding are available, differing
 /// in convergence behavior and how they rescale the retained endpoint:  
-/// ├ [`BracketFamily::RegulaFalsiPure`]          
-/// │   ├ Linear convergence; stalls often. 
-/// │   └ `f_same` unchanged.  
-/// │
-/// ├ [`BracketFamily::RegulaFalsiIllinois`]      
-/// │   ├ Linear convergence; rarely stalls.  
-/// │   └ `f_same *= 0.5`  
-/// │
-/// ├ [`BracketFamily::RegulaFalsiPegasus`]       
-/// │   ├ Linear convergence; typically faster than Illinois.  
-/// │   └ `f_same *= f_other / (f_other + f_new)`  
-/// │
-/// └ [`BracketFamily::RegulaFalsiAndersonBjorck`] 
-///     ├ Fastest among the family.  
-///     └ `f_same *= max(0.5, 1 - f_new / f_other)`  
+/// - [`BracketFamily::RegulaFalsiPure`]          
+///     - Linear convergence; stalls often. 
+///     - `f_same` unchanged.  
+/// - [`BracketFamily::RegulaFalsiIllinois`]      
+///     - Linear convergence; rarely stalls.  
+///     - `f_same *= 0.5`  
+/// - [`BracketFamily::RegulaFalsiPegasus`]       
+///     - Linear convergence; typically faster than Illinois.  
+///     - `f_same *= f_other / (f_other + f_new)`  
+/// - [`BracketFamily::RegulaFalsiAndersonBjorck`] 
+///     - Fastest among the family.  
+///     - `f_same *= max(0.5, 1 - f_new / f_other)`  
 ///
 /// where `f_same` is the function value of the consecutively retained endpoint,  
 ///       `f_other` is the function value of the replaced endpoint,  
 ///       `f_new` is the function value of the new solution estimate.
 ///
 /// # Arguments
-/// ├ `func` : The function whose root is to be found.
-/// ├ `a`    : Lower bound of the search interval. Must be finite and less than `b`.
-/// ├ `b`    : Upper bound of the search interval. Must be finite and greater than `a`.
-/// └ `cfg`  : [`RegulaFalsiCfg`] (tolerances, optional `max_iter`, optional `variant`).  
+/// - `func` : The function whose root is to be found.
+/// - `a`    : Lower bound of the search interval. Must be finite and less than `b`.
+/// - `b`    : Upper bound of the search interval. Must be finite and greater than `a`.
+/// - `cfg`  : [`RegulaFalsiCfg`] (tolerances, optional `max_iter`, optional `variant`).  
 ///
 /// # Returns 
 /// [`RootFindingReport`] with 
-/// ├ `root`                : approximate root
-/// ├ `f_root`              : function value at `root`
-/// ├ `iterations`          : number of iterations performed
-/// ├ `evaluations`         : total function evaluations 
-/// ├ `termination_reason`  : why it stopped
-/// ├ `tolerance_satisfied` : which tolerance triggered
-/// ├ `stencil`             : previous bracket used to form the step
-/// └ `algorithm_name`      : "regula_falsi_{pure/illinois/pegasus/anderson_bjorck}"
+/// - `root`                : approximate root
+/// - `f_root`              : function value at `root`
+/// - `iterations`          : number of iterations performed
+/// - `evaluations`         : total function evaluations 
+/// - `termination_reason`  : why it stopped
+/// - `tolerance_satisfied` : which tolerance triggered
+/// - `stencil`             : previous bracket used to form the step
+/// - `algorithm_name`      : "regula_falsi_{pure/illinois/pegasus/anderson_bjorck}"
 //
 /// # Errors
-/// ├ [`RegulaFalsiError::InvalidBounds`]       : `a` or `b` is NaN/inf or `a >= b`.
-/// ├ [`RegulaFalsiError::NoSignChange`]        : `f(a)` and `f(b)` are same sign.
-/// │
+/// - [`RegulaFalsiError::InvalidBounds`]       : `a` or `b` is NaN/inf or `a >= b`.
+/// - [`RegulaFalsiError::NoSignChange`]        : `f(a)` and `f(b)` are same sign.
+/// 
 /// * Propagated via [`RegulaFalsiError::RootFinding`]
-/// ├ [`RootFindingError::NonFiniteEvaluation`] : `f(x)` NaN/inf.
-/// ├ [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
-/// │
+/// - [`RootFindingError::NonFiniteEvaluation`] : `f(x)` NaN/inf.
+/// - [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
+/// 
 /// * Propagated via [`RegulaFalsiError::Tolerance`] 
-/// ├ [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf 
-/// ├ [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
-/// ├ [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
-/// └ [`ToleranceError::InvalidAbsRelX`]        : one of `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`]        : one of `abs_x` and `rel_x` not > 0.
 ///
 /// # Behavior
-/// ├ Update:
-/// │   └ x_new = (x0*f(x1) - x1*f(x0)) / (f(x1) - f(x0)), maintaining a bracket
-/// │     where f(x0)*f(x1) < 0.
-/// │
-/// ├ Tolerances:
-/// │   ├ |f(x)| <= abs_fx return with [`ToleranceSatisfied::AbsFxReached`]
-/// │   └ |x_new - x_old|  return with [`ToleranceSatisfied::StepSizeReached`] 
-/// │
-/// ├ Stencil: 
-/// │   └ stores the bracket [a, b] that produced the calculated root. 
-/// │
-/// └ Variants:
-///     ├ Pure            : standard false-position, can stagnate if one endpoint never moves
-///     ├ Illinois        : halves stagnant endpoint’s function value
-///     ├ Pegasus         : rescales stagnant endpoint by f(new)/[f(new)+f(old)]
-///     └ Anderson-Bjorck : adaptive blend, avoids both stagnation and oscillation
+/// - Update:
+///     - x_new = (x0*f(x1) - x1*f(x0)) / (f(x1) - f(x0)), maintaining a bracket
+///       where f(x0)*f(x1) < 0.
+/// - Tolerances:
+///     - |f(x)| <= abs_fx return with [`ToleranceSatisfied::AbsFxReached`]
+///     - |x_new - x_old|  return with [`ToleranceSatisfied::StepSizeReached`] 
+/// - Stencil: 
+///     - stores the bracket [a, b] that produced the calculated root. 
+/// 
+/// Variants:
+///     - Pure            : standard false-position, can stagnate if one endpoint never moves
+///     - Illinois        : halves stagnant endpoint’s function value
+///     - Pegasus         : rescales stagnant endpoint by f(new)/[f(new)+f(old)]
+///     - Anderson-Bjorck : adaptive blend, avoids both stagnation and oscillation
 ///
 /// # Notes
-/// ├ Regula Falsi is globally convergent like bisection but faster in practice.
-/// └ Pure method may stall; Illinois, Pegasus, and Anderson-Bjorck are fixes.
+/// - Regula Falsi is globally convergent like bisection but faster in practice.
+/// - Pure method may stall; Illinois, Pegasus, and Anderson-Bjorck are fixes.
 pub fn regula_falsi<F> (
     mut func: F, 
     mut a: f64, 
