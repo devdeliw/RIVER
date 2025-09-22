@@ -1,5 +1,3 @@
-//! Secant method
-
 use super::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 

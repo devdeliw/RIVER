@@ -1,5 +1,3 @@
-//! Newton-Rapshon method
-
 use super::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
@@ -42,7 +40,7 @@ pub enum NewtonError {
 /// 
 /// # Fields
 /// - `common`   : [`CommonCfg`] with tolerances and optional `max_iter`.
-/// - `max_step` : optional limit on the absolute Newton step (default: ∞).
+/// - `max_step` : optional limit on the absolute Newton step (default: inf).
 ///
 /// # Construction
 /// - Use [`NewtonCfg::new`] then optional setters.

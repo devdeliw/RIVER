@@ -1,8 +1,6 @@
 //! Defines the [`RootFindingReport`] struct returned by all 
 //! root-finding algorithms. 
 
-use super::algorithms; 
-
 /// Reasons a root-finding algorithm may terminate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)] 
 pub enum TerminationReason { 

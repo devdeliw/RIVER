@@ -1,5 +1,3 @@
-// False position methods
-
 use super::algorithms::{Algorithm, BracketFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
