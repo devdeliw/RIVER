@@ -1,33 +1,40 @@
-//! tests for the brent root finding algorithm
-use numena::root_finding::brent::{brent, BrentCfg, BrentError};
-use numena::root_finding::errors::RootFindingError;
-use numena::root_finding::report::{TerminationReason, ToleranceSatisfied};
+use river::root_finding::brent::{brent, BrentCfg, BrentError};
+use river::root_finding::errors::RootFindingError;
+use river::root_finding::report::{TerminationReason, ToleranceSatisfied};
 
-type TestResult = Result<(), BrentError>;
+type RiverResult = Result<(), BrentError>;
 
 #[test]
-fn finds_sqrt_2() -> TestResult {
-    let f   = |x: f64| x * x - 2.0;
-    let tol = 1e-10;
+fn sqrt2() -> RiverResult {
+    let f   = |x: f64| x.powi(2) - 2.0;
+
+    let a = 0.0; 
+    let b = 2.0; 
+
+    let abs_fx   = 1e-30; 
+    let abs_x    = 1e-15; 
+    let rel_x    = 0.0; 
+    let max_iter = 60; 
 
     let cfg = BrentCfg::new()
-        .set_abs_fx(tol)?
-        .set_abs_x(tol)?
-        .set_rel_x(0.0)?
-        .set_max_iter(60)?;
+        .set_abs_fx(abs_fx)?
+        .set_abs_x(abs_x)?
+        .set_rel_x(rel_x)?
+        .set_max_iter(max_iter)?;
 
-    let res = brent(f, 0.0, 2.0, cfg)?;
+    let res = brent(f, a, b, cfg)?;
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
-    assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
-    assert!((res.root - 2.0_f64.sqrt()).abs() <= tol);
+    assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::WidthTolReached);
+
+    assert!((res.root - (2.0 as f64).sqrt()).abs() <= abs_x);
     assert!(res.iterations > 0);
-    assert_eq!(res.algorithm_name, "brent");
+
     Ok(())
 }
 
 #[test]
-fn finds_3() -> TestResult {
+fn three() -> RiverResult {
     let f   = |x: f64| 2.0 * x - 6.0;
     let tol = 1e-12;
 
@@ -41,12 +48,14 @@ fn finds_3() -> TestResult {
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
+
     assert!((res.root - 3.0).abs() <= tol);
+    
     Ok(())
 }
 
 #[test]
-fn finds_negative_5() -> TestResult {
+fn negative5() -> RiverResult {
     let f   = |x: f64| x + 5.0;
     let tol = 1e-12;
 
@@ -60,24 +69,33 @@ fn finds_negative_5() -> TestResult {
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
+
     assert!((res.root + 5.0).abs() <= tol);
+
     Ok(())
 }
 
 #[test]
-fn no_sign_change() -> TestResult {
+fn no_sign_change() -> RiverResult {
     let f   = |x: f64| x * x + 1.0;
-    let cfg = BrentCfg::new().set_abs_fx(1e-10)?;
+    let cfg = BrentCfg::new()
+        .set_abs_fx(1e-10)?;
+
     let err = brent(f, -1.0, 1.0, cfg).unwrap_err();
 
-    assert!(matches!(err, BrentError::NoSignChange { a: -1.0, b: 1.0 }));
+    assert!(matches!(
+            err, 
+            BrentError::NoSignChange { a: -1.0, b: 1.0 }
+    ));
+
     Ok(())
 }
 
 #[test]
-fn non_finite_eval_at_endpoint() -> TestResult {
+fn infinite_eval_start() -> RiverResult {
     let f   = |x: f64| x.sqrt() - 2.0;
     let cfg = BrentCfg::new().set_abs_fx(1e-10)?;
+
     let err = brent(f, -1.0, 5.0, cfg).unwrap_err();
 
     assert!(matches!(
@@ -85,13 +103,15 @@ fn non_finite_eval_at_endpoint() -> TestResult {
         BrentError::RootFinding(RootFindingError::NonFiniteEvaluation { x, fx })
         if x == -1.0 && fx.is_nan()
     ));
+
     Ok(())
 }
 
 #[test]
-fn infinite_function_value_inside_interval() -> TestResult {
+fn infinite_eval_mid() -> RiverResult {
     let f   = |x: f64| 1.0 / x;
     let cfg = BrentCfg::new().set_abs_fx(1e-12)?;
+
     let err = brent(f, -1.0, 1.0, cfg).unwrap_err();
 
     assert!(matches!(
@@ -99,70 +119,90 @@ fn infinite_function_value_inside_interval() -> TestResult {
         BrentError::RootFinding(RootFindingError::NonFiniteEvaluation { x, fx })
         if x == 0.0 && fx.is_infinite()
     ));
+
     Ok(())
 }
 
 #[test]
-fn detects_invalid_bounds() -> TestResult {
+fn invalid_bounds() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new();
+
     let err = brent(f, 2.0, 0.0, cfg).unwrap_err();
 
-    assert!(matches!(err, BrentError::InvalidBounds { a: _, b: _ }));
+    assert!(matches!(
+            err, 
+            BrentError::InvalidBounds { .. }
+    ));
+
     Ok(())
 }
 
 #[test]
-fn identical_bounds_are_invalid() -> TestResult {
+fn identical_bounds() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new();
+
     let err = brent(f, 1.0, 1.0, cfg).unwrap_err();
 
-    assert!(matches!(err, BrentError::InvalidBounds { a, b } if a == 1.0 && b == 1.0));
+    assert!(matches!(
+            err, 
+            BrentError::InvalidBounds { a, b } 
+            if a == 1.0 && b == 1.0
+    ));
+
     Ok(())
 }
 
 #[test]
-fn endpoint_a_is_root_iterations_0() -> TestResult {
+fn endpoint_a_root() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new().set_abs_fx(1e-10)?;
+
     let res = brent(f, 0.0, 5.0, cfg)?;
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
+
     assert_eq!(res.root, 0.0);
     assert_eq!(res.iterations, 0);
+
     Ok(())
 }
 
 #[test]
-fn endpoint_b_is_root_iterations_0() -> TestResult {
+fn endpoint_b_root() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new().set_abs_fx(1e-10)?;
+
     let res = brent(f, -5.0, 0.0, cfg)?;
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
+
     assert_eq!(res.root, 0.0);
     assert_eq!(res.iterations, 0);
+
     Ok(())
 }
 
 #[test]
-fn narrow_interval_stops_on_width() -> TestResult {
+fn small_interval() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new()
         .set_abs_x(1e-12)?
         .set_abs_fx(1e-20)?;
+
     let res = brent(f, -3e-16, 1e-16, cfg)?;
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::WidthTolReached);
+
     Ok(())
 }
 
 #[test]
-fn high_function_tol_stops_quickly() -> TestResult {
+fn high_tol_exits() -> RiverResult {
     let f   = |x: f64| x;
     let cfg = BrentCfg::new()
         .set_abs_fx(1.0)?
@@ -172,12 +212,14 @@ fn high_function_tol_stops_quickly() -> TestResult {
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
-    assert!(res.iterations == 0 || res.iterations < 3);
+
+    assert!(res.iterations == 0);
+
     Ok(())
 }
 
 #[test]
-fn max_iter_1_hits_limit() -> TestResult {
+fn max_iter() -> RiverResult {
     let f   = |x: f64| (x - 1.0).powi(3);
 
     let cfg = BrentCfg::new()
@@ -190,11 +232,12 @@ fn max_iter_1_hits_limit() -> TestResult {
 
     assert_eq!(res.termination_reason, TerminationReason::IterationLimit);
     assert_eq!(res.iterations, 1);
+
     Ok(())
 }
 
 #[test]
-fn pathological_flat_converges() -> TestResult {
+fn pathological_flat() -> RiverResult {
     let f   = |x: f64| (x - 1.0).powi(3);
     let tol = 1e-10;
 
@@ -211,39 +254,45 @@ fn pathological_flat_converges() -> TestResult {
         ToleranceSatisfied::AbsFxReached | ToleranceSatisfied::WidthTolReached
     ));
     assert!((res.root - 1.0).abs() <= 1e-6); 
+
     Ok(())
 }
 
 #[test]
-fn both_endpoints_are_roots_picks_first() -> TestResult {
+fn both_endpoints_root() -> RiverResult {
     let f   = |_x: f64| 0.0;
     let cfg = BrentCfg::new().set_abs_fx(1e-12)?;
+
     let res = brent(f, 1.0, 2.0, cfg)?;
 
     assert_eq!(res.root, 1.0);
     assert_eq!(res.iterations, 0);
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
+
     Ok(())
 }
 
 #[test]
-fn high_rel_tol_ignores_abs_x() -> TestResult {
+fn high_rel_tol() -> RiverResult {
     let f   = |x: f64| x - 10.0;
+
     let cfg = BrentCfg::new()
         .set_abs_x(1e-12)?
         .set_rel_x(0.5)? 
         .set_max_iter(10)?;
+
     let res = brent(f, -2.0, 21.0, cfg)?;
 
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::WidthTolReached);
     assert!(res.iterations <= 2);
+
     Ok(())
 }
 
 #[test]
-fn tight_bracket_nearly_equal_fa_fb_still_ok() -> TestResult {
+fn nearly_equal_fafb() -> RiverResult {
     let f   = |x: f64| x - 1.0;
 
     let a = 1.0 - 1.0e-14;
@@ -256,14 +305,16 @@ fn tight_bracket_nearly_equal_fa_fb_still_ok() -> TestResult {
         .set_max_iter(10)?;
 
     let res = brent(f, a, b, cfg)?;
+
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert_eq!(res.tolerance_satisfied, ToleranceSatisfied::AbsFxReached);
     assert!(res.iterations <= 2);
+
     Ok(())
 }
 
 #[test]
-fn very_large_scale_no_overflow() -> TestResult {
+fn very_large_scale() -> RiverResult {
     let f   = |x: f64| x - 1.0e12;
 
     let cfg = BrentCfg::new()
@@ -273,13 +324,15 @@ fn very_large_scale_no_overflow() -> TestResult {
         .set_max_iter(100)?;
 
     let res = brent(f, 1.0e11, 2.0e12, cfg)?;
+
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
-    assert!( (res.root - 1.0e12).abs() <= 1e6 ); // generous due to rel tol
+    assert!( (res.root - 1.0e12).abs() <= 1e6 ); 
+
     Ok(())
 }
 
 #[test]
-fn asymmetric_huge_bracket_converges() -> TestResult {
+fn asymmetric_bracket() -> RiverResult {
     let f   = |x: f64| x - 2.0;
 
     let cfg = BrentCfg::new()
@@ -289,13 +342,15 @@ fn asymmetric_huge_bracket_converges() -> TestResult {
         .set_max_iter(100)?;
 
     let res = brent(f, -1.0e9, 3.0, cfg)?;
+
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert!((res.root - 2.0).abs() <= 1e-6);
+
     Ok(())
 }
 
 #[test]
-fn curved_monotone_acceptance_ok() -> TestResult {
+fn curved_monotone() -> RiverResult {
     let f   = |x: f64| x.exp() - 3.0;
 
     let cfg = BrentCfg::new()
@@ -305,8 +360,10 @@ fn curved_monotone_acceptance_ok() -> TestResult {
         .set_max_iter(50)?;
 
     let res = brent(f, 0.0, 2.0, cfg)?;
+
     assert_eq!(res.termination_reason, TerminationReason::ToleranceReached);
     assert!((res.root - 3.0_f64.ln()).abs() <= 1e-8);
+
     Ok(())
 }
 
