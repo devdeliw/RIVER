@@ -11,8 +11,8 @@
 //! tolerance type is used via `calculate_tolerance`.
 
 
-use super::errors::ToleranceError;  
-use super::algorithms::Algorithm;
+use crate::root_finding::errors::ToleranceError;  
+use crate::root_finding::algorithms::Algorithm;
 
 
 /// Bracketing methods use DynamicTolerance::WidthTol 

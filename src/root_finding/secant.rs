@@ -1,8 +1,8 @@
-use super::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
-use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
-use super::tolerances::DynamicTolerance; 
-use super::errors::{RootFindingError, ToleranceError}; 
-use super::config::{CommonCfg, impl_common_cfg}; 
+use crate::root_finding::algorithms::{Algorithm, OpenFamily, GLOBAL_MAX_ITER_FALLBACK}; 
+use crate::root_finding::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
+use crate::root_finding::tolerances::DynamicTolerance; 
+use crate::root_finding::errors::{RootFindingError, ToleranceError}; 
+use crate::root_finding::config::{CommonCfg, impl_common_cfg}; 
 use thiserror::Error; 
 
 

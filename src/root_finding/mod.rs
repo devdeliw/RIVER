@@ -2,9 +2,9 @@
 pub mod algorithms; 
 pub mod report; 
 pub mod errors; 
-pub mod tolerances; 
-pub mod signs; 
-pub mod config; 
+pub(crate) mod config;
+pub(crate) mod signs; 
+pub(crate) mod tolerances; 
 
 // algorithms 
 pub mod bisection;

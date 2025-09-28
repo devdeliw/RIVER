@@ -12,7 +12,7 @@
 
 
 use thiserror::Error; 
-use super::algorithms::Algorithm; 
+use crate::root_finding::algorithms::Algorithm; 
 
 
 /// Algorithm selection errors.  
