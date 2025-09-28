@@ -1,6 +1,6 @@
 # RIVER 
 
-**R**ust **I**nfrastructure for **V**ectors and **E**igenvalue **R**outines. 
+**R**ust **I**nfrastructure for **V**ector and **E**igenvalue **R**outines. 
 
 A clean and optimized numerical computing library written in Rust.  
 
