@@ -34,10 +34,9 @@ pub enum ToleranceSatisfied {
 
 /// Method-specific data returned by a solver. 
 /// Contains the last set of points used in the update formula. 
-/// 
-/// - [`Stencil::Bracket`]  : bracketing methods  
+/// - [`Stencil::Bracket`] : bracketing methods  
 ///     - `left`, `right` bounds of the final interval  
-/// - [`Stencil::Open`]     : open methods  
+/// - [`Stencil::Open`]    : open methods  
 ///     - `x` = last iterate used to compute the root  
 #[derive(Debug, Copy, Clone)]
 pub enum Stencil { 
@@ -48,7 +47,7 @@ impl Stencil {
     pub fn stencil(&self) -> &[f64] { 
         match self { 
             Stencil::Bracket { bounds } => &bounds[..],
-            Stencil::Open { x, len } => &x[..*len],
+            Stencil::Open { x, len }    => &x[..*len],
         }
     }
     pub fn singleton(x: f64) -> Self { 

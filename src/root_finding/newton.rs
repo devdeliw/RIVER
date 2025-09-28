@@ -47,7 +47,7 @@ pub enum NewtonError {
 /// - Set an explicit step cap via [`NewtonCfg::set_max_step`] (must be > 0).
 ///
 /// # Defaults
-/// - If `common.max_iter` is `None`, [`newton`] resolves it using
+/// - If `common.max_iter` is `None`, [`newton`] resolves it via
 ///   [`Algorithm::default_max_iter`] for [`OpenFamily::Newton`], or
 ///   [`GLOBAL_MAX_ITER_FALLBACK`] if unavailable.
 #[derive(Debug, Copy, Clone)] 
@@ -322,22 +322,22 @@ where
 /// - `algorithm_name`      : "newton"
 ///
 /// # Errors
-/// - [`NewtonError::InvalidGuess`]                 : `x0` non-finite
-/// - [`NewtonError::InvalidMaxStep`]               : `max_step <= 0` or NaN
-/// - [`NewtonError::StepNotFinite`]                : `x + step` not representable
-/// - [`NewtonError::DerivativeTooSmall`]           : derivative too small for a reliable step
-/// - [`NewtonError::DerivativeNotFinite`]          : derivative non-finite
+/// - [`NewtonError::InvalidGuess`]         : `x0` non-finite
+/// - [`NewtonError::InvalidMaxStep`]       : `max_step <= 0` or NaN
+/// - [`NewtonError::StepNotFinite`]        : `x + step` not representable
+/// - [`NewtonError::DerivativeTooSmall`]   : derivative too small for a reliable step
+/// - [`NewtonError::DerivativeNotFinite`]  : derivative non-finite
 /// - [`NewtonError::FiniteDifferenceStepUnrepresentable`]  : FD step unrepresentable near `x`
 ///  
 /// * Propagated via [`NewtonError::RootFinding`]:
-/// - [`RootFindingError::NonFiniteEvaluation`]     : `f(x)` produced NaN/inf
-/// - [`RootFindingError::InvalidMaxIter`]          : `max_iter = 0`
+/// - [`RootFindingError::NonFiniteEvaluation`] : `f(x)` produced NaN/inf
+/// - [`RootFindingError::InvalidMaxIter`]      : `max_iter = 0`
 /// 
 /// * Propagated via [`NewtonError::Tolerance`]: 
-/// - [`ToleranceError::InvalidAbsFx`]              : `abs_fx` <= 0.0 or inf 
-/// - [`ToleranceError::InvalidAbsX`]               : `abs_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidRelX`]               : `rel_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidAbsRelX`]            : both `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]   : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]    : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]    : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`] : both `abs_x` and `rel_x` not > 0.
 
 /// # Behavior
 /// - Derivative:

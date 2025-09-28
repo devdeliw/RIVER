@@ -59,13 +59,13 @@ impl Algorithm {
 
         let calculated_tol = match (self, dynamic_tol) { 
             (
-                Algorithm::Bracket(..) | Algorithm::Compound(..), 
+                Algorithm::Bracket(..) | Algorithm::Hybrid(..), 
                 DynamicTolerance::WidthTol { a, b }
             ) 
             => abs_x + rel_x * a.abs().max(b.abs()).max(1.0), 
 
             (
-                Algorithm::Open(..) | Algorithm::Compound(..), 
+                Algorithm::Open(..) | Algorithm::Hybrid(..), 
                 DynamicTolerance::StepTol { x }
             )
             => { 

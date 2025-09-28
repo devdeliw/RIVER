@@ -110,9 +110,9 @@ where F: FnMut(f64) -> Result<f64, SecantError> {
 /// using the two points (stencil) used in the update formula.  
 ///
 /// # Arguments 
-/// - `x1`/`x2`         : x-values used in update formula 
-/// - `abs_x`/`rel_x`   : absolute and relative tolerance 
-/// - `algorithm`       : [`Algorithm::Open`] with [`OpenFamily::Secant`]
+/// - `x1`/`x2`       : x-values used in update formula 
+/// - `abs_x`/`rel_x` : absolute and relative tolerance 
+/// - `algorithm`     : [`Algorithm::Open`] with [`OpenFamily::Secant`]
 ///
 /// # Returns 
 /// - `Ok(step_tol)` : if tolerance finite and > 0 
@@ -161,17 +161,17 @@ fn step_tolerance(
 /// - `algorithm_name`      : "secant"
 ///
 /// # Errors
-/// - [`SecantError::InvalidGuess`]             : `x0` or `x1` is NaN/inf or equal
+/// - [`SecantError::InvalidGuess`] : `x0` or `x1` is NaN/inf or equal
 /// 
 /// * Propagated via [`SecantError::RootFinding`]
 /// - [`RootFindingError::NonFiniteEvaluation`] : `f(x)` produced NaN/inf
 /// - [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
 /// 
 /// * Propagated via [`SecantError::Tolerance`] 
-/// - [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf
-/// - [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidAbsRelX`]        : both `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]   : `abs_fx` <= 0.0 or inf
+/// - [`ToleranceError::InvalidAbsX`]    : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]    : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`] : both `abs_x` and `rel_x` not > 0.
 ///
 /// # Behavior
 /// - Update:

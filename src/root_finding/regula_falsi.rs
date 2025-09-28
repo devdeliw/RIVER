@@ -179,18 +179,18 @@ where F: FnMut(f64) -> Result<f64, RegulaFalsiError> {
 /// - `algorithm_name`      : "regula_falsi_{pure/illinois/pegasus/anderson_bjorck}"
 //
 /// # Errors
-/// - [`RegulaFalsiError::InvalidBounds`]       : `a` or `b` is NaN/inf or `a >= b`.
-/// - [`RegulaFalsiError::NoSignChange`]        : `f(a)` and `f(b)` are same sign.
+/// - [`RegulaFalsiError::InvalidBounds`] : `a` or `b` is NaN/inf or `a >= b`.
+/// - [`RegulaFalsiError::NoSignChange`]  : `f(a)` and `f(b)` are same sign.
 /// 
 /// * Propagated via [`RegulaFalsiError::RootFinding`]
 /// - [`RootFindingError::NonFiniteEvaluation`] : `f(x)` NaN/inf.
 /// - [`RootFindingError::InvalidMaxIter`]      : `max_iter` = 0
 /// 
 /// * Propagated via [`RegulaFalsiError::Tolerance`] 
-/// - [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf 
-/// - [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidAbsRelX`]        : one of `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]   : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]    : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]    : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`] : one of `abs_x` and `rel_x` not > 0.
 ///
 /// # Behavior
 /// - Update:

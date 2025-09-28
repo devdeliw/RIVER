@@ -52,12 +52,12 @@ impl_common_cfg!(BisectionCfg);
 /// This is used as a default if `max_iter` is not provided. 
 ///
 /// # Arguments 
-/// - `a`       ` : left endpoint 
+/// - `a`         : left endpoint 
 /// - `b`         : right endpoint 
 /// - `width_tol` : the convergence tolerance on x-values
 ///
 /// # Returns:
-/// - `Ok(theoretical_iters)` : # bisections to guarantee `width_tol` convergence.
+/// - `Ok(theoretical_iters)` : # of bisections to guarantee `width_tol` convergence.
 /// - `Err(ToleranceError::InvalidTolerance)` : if width_tol <= 0 or inf. 
 #[inline] 
 pub(crate) fn theoretical_iter( 
@@ -131,18 +131,18 @@ where F: FnMut(f64) -> Result<f64, BisectionError> {
 /// - `algorithm_name`      : "bisection"
 ///
 /// # Errors
-/// - [`BisectionError::InvalidBounds`]         : `a` or `b` is NaN/inf or if `a >= b`.
-/// - [`BisectionError::NoSignChange`]          : `func(a)` and `func(b)` do not have opposite signs.
+/// - [`BisectionError::InvalidBounds`] : `a` or `b` is NaN/inf or if `a >= b`.
+/// - [`BisectionError::NoSignChange`]  : `func(a)` and `func(b)` do not have opposite signs.
 /// 
 /// * Propagated via [`BisectionError::RootFinding`]
 /// - [`RootFindingError::NonFiniteEvaluation`] : `func(x)` produces NaN or inf during evaluation.
 /// - [`RootFindingError::InvalidMaxIter`]      : `cfg.max_iter` = 0
 /// 
 /// * Propagated via [`BisectionError::Tolerance`] 
-/// - [`ToleranceError::InvalidAbsFx`]          : `abs_fx` <= 0.0 or inf
-/// - [`ToleranceError::InvalidAbsX`]           : `abs_x`  <  0.0 or inf
-/// - [`ToleranceError::InvalidRelX`]           : `rel_x`  <  0.0 or inf
-/// - [`ToleranceError::InvalidAbsRelX`]        : one of `abs_x` and `rel_x` not > 0.
+/// - [`ToleranceError::InvalidAbsFx`]   : `abs_fx` <= 0.0 or inf
+/// - [`ToleranceError::InvalidAbsX`]    : `abs_x`  <  0.0 or inf
+/// - [`ToleranceError::InvalidRelX`]    : `rel_x`  <  0.0 or inf
+/// - [`ToleranceError::InvalidAbsRelX`] : one of `abs_x` and `rel_x` not > 0.
 ///
 /// # Behavior
 /// - Update:

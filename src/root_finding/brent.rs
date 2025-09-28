@@ -1,4 +1,4 @@
-use super::algorithms::{Algorithm, CompoundFamily, GLOBAL_MAX_ITER_FALLBACK}; 
+use super::algorithms::{Algorithm, HybridFamily, GLOBAL_MAX_ITER_FALLBACK}; 
 use super::report::{RootFindingReport, TerminationReason, ToleranceSatisfied, Stencil}; 
 use super::tolerances::DynamicTolerance; 
 use super::signs::{opposite_sign, same_sign};
@@ -35,7 +35,7 @@ pub enum BrentError {
 /// # Defaults 
 /// - If `common.max_iter` is `None`, [`brent`] resolves it using the 
 ///   worst-case theoretical number of iterations using pure bisection
-///   from using the initial window.
+///   from the initial window.
 #[derive(Debug, Copy, Clone)] 
 pub struct BrentCfg { 
     common: CommonCfg
@@ -58,9 +58,9 @@ fn near_equal(x: f64, y: f64) -> bool {
 }
 
 
-/// Inverse quadratic interpolation (Brent-style ratios).
+/// Inverse quadratic interpolation
 ///
-/// Uses three distinct abscissae `(a,b,c)` with values `(fa,fb,fc)` to compute
+/// Uses three distinct `(a,b,c)` with values `(fa,fb,fc)` to compute
 /// a candidate `s = b + p/qd`. Rejects non-finite/degenerate inputs.
 ///
 /// # Arguments
@@ -107,6 +107,7 @@ fn iqi(
 
     let d = p / qd;
     let sx = b + d;
+
     if !sx.is_finite() { return None; }
     Some(sx)
 }
@@ -117,7 +118,7 @@ fn iqi(
 /// Rejects non-finite inputs and (near-)parallel secant.
 ///
 /// # Arguments
-/// - `(a, fa)`  : `a` and function value `f(a)`
+/// - `(a, fa)` : `a` and function value `f(a)`
 /// - `(b, fb)` : `b` and function value `f(b)`
 ///
 /// # Returns
@@ -147,7 +148,6 @@ fn secant(
 ///
 /// Checks that `s` lies strictly inside the open interval
 /// `((3a + b)/4, b)` when `a < b` (mirrored when `a > b`).
-/// This guards against overly aggressive extrapolation.
 ///
 /// # Arguments
 /// - `a`     : bracket endpoint A
@@ -192,18 +192,18 @@ fn interior_window_ok(a: f64, b: f64, s: f64) -> bool {
 /// - `algorithm_name`      : "brent"
 ///
 /// # Errors
-/// - [`BrentError::InvalidBounds`]        : `a`/`b` non-finite or `a >= b`
-/// - [`BrentError::NoSignChange`]         : f(a) and f(b) share sign on [a, b]
+/// - [`BrentError::InvalidBounds`] : `a`/`b` non-finite or `a >= b`
+/// - [`BrentError::NoSignChange`]  : f(a) and f(b) share sign on [a, b]
 ///  
 /// * Propagated via [`BrentError::RootFinding`]
 /// - [`RootFindingError::NonFiniteEvaluation`] : f(x) produced NaN/inf
 /// - [`RootFindingError::InvalidMaxIter`]      : cfg.common.max_iter = Some(0)
 /// 
 /// * Propagated via [`BrentError::Tolerance`]
-/// - [`ToleranceError::InvalidAbsFx`]      : `abs_fx` <= 0.0 or inf 
-/// - [`ToleranceError::InvalidAbsX`]       : `abs_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidRelX`]       : `rel_x`  <  0.0 or inf 
-/// - [`ToleranceError::InvalidAbsRelX`]    : one of `abs_x` and `rel_x` not > 0
+/// - [`ToleranceError::InvalidAbsFx`]   : `abs_fx` <= 0.0 or inf 
+/// - [`ToleranceError::InvalidAbsX`]    : `abs_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidRelX`]    : `rel_x`  <  0.0 or inf 
+/// - [`ToleranceError::InvalidAbsRelX`] : one of `abs_x` and `rel_x` not > 0
 /// 
 /// # Notes
 /// - Globally convergent for continuous f with a valid sign-change bracket.
@@ -230,7 +230,7 @@ where F: FnMut(f64) -> f64 {
     let rel_x     = cfg.common.rel_x(); 
     let abs_fx    = cfg.common.abs_fx(); 
     let max_iter  = cfg.common.max_iter(); 
-    let algorithm = Algorithm::Compound(CompoundFamily::Brent);
+    let algorithm = Algorithm::Hybrid(HybridFamily::Brent);
     let algo_name = algorithm.algorithm_name();
 
     // already validated via building config; redundant guard

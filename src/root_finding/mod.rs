@@ -6,7 +6,6 @@ pub mod tolerances;
 pub mod signs; 
 pub mod config; 
 
-
 // algorithms 
 pub mod bisection;
 pub mod regula_falsi;

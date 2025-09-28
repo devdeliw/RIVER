@@ -14,7 +14,6 @@
 //! Some algorithms (e.g. regula_falsi) have additional config arguments 
 //! to specify which variant of the algortihm to use (e.g. pegasus)
 
-
 pub const DEFAULT_ABS_FX : f64 = 1e-12;
 pub const DEFAULT_ABS_X  : f64 = 0.0;
 pub const DEFAULT_REL_X  : f64 = 4.0 * f64::EPSILON;

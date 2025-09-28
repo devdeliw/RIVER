@@ -14,13 +14,14 @@ pub const GLOBAL_MAX_ITER_FALLBACK: usize = 500;
 
 
 /// Root-finding algorithm variants. 
-/// - [`Algorithm::Bracket`] contains bracket methods for root-finding 
-/// - [`Algorithm::Open`]    contains open methods for root-finding 
+/// - [`Algorithm::Bracket`]  contains *bracket* methods for root-finding 
+/// - [`Algorithm::Open`]     contains *open* methods for root-finding 
+/// - [`Algorithm::Hybrid`] contains compound brackent-open brent method 
 #[derive(Debug, Copy, Clone)]
 pub enum Algorithm { 
     Bracket(BracketFamily), 
     Open(OpenFamily),
-    Compound(CompoundFamily)
+    Hybrid(HybridFamily)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -39,7 +40,7 @@ pub enum OpenFamily {
 }
 
 #[derive(Debug, Copy, Clone)] 
-pub enum CompoundFamily { 
+pub enum HybridFamily { 
     Brent 
 }
 
@@ -50,9 +51,8 @@ impl Algorithm {
     /// - Applied only when `max_iter` is unset.  
     /// - Values are heuristic and method-specific.  
     /// - Methods with theoretical bounds (e.g. [`BracketFamily::Bisection`]) 
-    ///   return `None`, meaning “compute theoretical bound instead”.  
-    ///   - If that bound exceeds practical limits, 
-    ///     [`GLOBAL_MAX_ITER_FALLBACK`] is used.  
+    ///   return `None`, meaning "compute theoretical bound instead".  
+    ///   - If this bound exceeds practical limits, [`GLOBAL_MAX_ITER_FALLBACK`] is used.  
     pub const fn default_max_iter(self) -> Option<usize> { 
         match self { 
             Algorithm::Bracket(BracketFamily::Bisection)                   => None, 
@@ -62,7 +62,7 @@ impl Algorithm {
             | Algorithm::Bracket(BracketFamily::RegulaFalsiAndersonBjorck) => Some(100), 
             Algorithm::Open(OpenFamily::Secant)                            => Some(100), 
             Algorithm::Open(OpenFamily::Newton)                            => Some(50), 
-            Algorithm::Compound(CompoundFamily::Brent)                      => None, 
+            Algorithm::Hybrid(HybridFamily::Brent)                         => None, 
         }
     }
 
@@ -75,10 +75,11 @@ impl Algorithm {
             Algorithm::Bracket(BracketFamily::RegulaFalsiAndersonBjorck) => "regula_falsi_anderson_bjorck", 
             Algorithm::Open(OpenFamily::Secant)                          => "secant", 
             Algorithm::Open(OpenFamily::Newton)                          => "newton",
-            Algorithm::Compound(CompoundFamily::Brent)                   => "brent",   
+            Algorithm::Hybrid(HybridFamily::Brent)                       => "brent",   
         }
     }
 }
+
 impl std::fmt::Display for Algorithm { 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
         write!(f, "{}", self.algorithm_name())
