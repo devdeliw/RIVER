@@ -6,7 +6,7 @@ type RiverResult = Result<(), BisectionError>;
     
 #[test] 
 fn sqrt2() -> RiverResult { 
-    let f = |x: f64| x * x - 2.0; 
+    let f = |x: f64| x.powi(2) - 2.0; 
 
     // bounds 
     let a = 0.0; 
@@ -67,7 +67,7 @@ fn three() -> RiverResult {
 
 #[test]
 fn no_sign_change() -> RiverResult {
-    let f   = |x: f64| x.powi(2) + 1.0;
+    let f = |x: f64| x.powi(2) + 1.0;
 
     let cfg = BisectionCfg::new()
         .set_abs_fx(1e-10)?;
@@ -81,7 +81,7 @@ fn no_sign_change() -> RiverResult {
 
 #[test]
 fn non_finite_eval() -> RiverResult {
-    let f   = |x: f64| x.sqrt() - 2.0;
+    let f = |x: f64| x.sqrt() - 2.0;
 
     let cfg = BisectionCfg::new()
         .set_abs_fx(1e-10)?;
@@ -99,7 +99,7 @@ fn non_finite_eval() -> RiverResult {
 
 #[test]
 fn negative5() -> RiverResult {
-    let f   = |x: f64| x + 5.0;
+    let f = |x: f64| x + 5.0;
 
     let a = -10.0; 
     let b = 0.0; 
@@ -128,7 +128,7 @@ fn negative5() -> RiverResult {
 
 #[test]
 fn max_iter() -> RiverResult {
-    let f     = |x: f64| x;
+    let f = |x: f64| x;
 
     let a = -3.0; 
     let b = 2.0; 
@@ -193,7 +193,7 @@ fn endpoint_b_root() -> RiverResult {
 
 #[test]
 fn pathological_flat() -> RiverResult {
-    let f   = |x: f64| (x - 1.0).powi(3);
+    let f = |x: f64| (x - 1.0).powi(3);
 
     let abs_fx   = 1e-10;  
     let abs_x    = 1e-10;
@@ -305,7 +305,7 @@ fn both_endpoints_roots() -> RiverResult {
 
 #[test]
 fn high_rel_tol() -> RiverResult {
-    let f   = |x: f64| x - 10.0;
+    let f = |x: f64| x - 10.0;
 
     let cfg = BisectionCfg::new()
         .set_abs_x(1e-12)?
