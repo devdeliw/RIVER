@@ -120,7 +120,7 @@ fn unequal_length_error() {
 
 #[test]
 fn non_increasing_x_error() {
-    let x = [0.0, 0.0, 2.0];
+    let x = [0.0, -1.0, 2.0];
     let err = LinearCfg::new().set_x(&x).unwrap_err();
     assert!(matches!(err, InterpolationError::NonIncreasingX));
 }
