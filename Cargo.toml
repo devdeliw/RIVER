@@ -1,7 +1,8 @@
 [package]
-name = "numena"
+name = "river"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 thiserror = "1"
+coral-blas = "0.2.1"
