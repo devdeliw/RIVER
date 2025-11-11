@@ -1,4 +1,4 @@
-use river::interpolation::spline::natural::{interpolate, NaturalSplineCfg};
+use river::interpolation::natural_spline::{interpolate, NaturalSplineCfg};
 use river::interpolation::errors::InterpolationError;
 
 type RiverResult = Result<(), InterpolationError>;

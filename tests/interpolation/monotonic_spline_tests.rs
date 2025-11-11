@@ -1,4 +1,4 @@
-use river::interpolation::spline::monotonic::{interpolate, MonotonicSplineCfg};
+use river::interpolation::monotonic_spline::{interpolate, MonotonicSplineCfg};
 use river::interpolation::errors::InterpolationError;
 
 type RiverResult = Result<(), InterpolationError>;

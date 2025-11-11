@@ -1,4 +1,4 @@
-use river::interpolation::spline::clamped::{interpolate, ClampedSplineCfg};
+use river::interpolation::clamped_spline::{interpolate, ClampedSplineCfg};
 use river::interpolation::errors::InterpolationError;
 
 type RiverResult = Result<(), InterpolationError>;
@@ -28,8 +28,8 @@ fn report_metadata() -> RiverResult {
     let x = [0.0, 1.0, 2.0];
     let y = [0.0, 1.0, 4.0];
     let x_eval = [0.5, 1.5];
-    let fp0 = 0.0;     // dy/dx at x=0 for y=x^2
-    let fpn = 4.0;     // dy/dx at x=2 for y=x^2
+    let fp0 = 0.0;  // dy/dx at x=0 for y=x^2
+    let fpn = 4.0;  // dy/dx at x=2 for y=x^2
 
     let cfg = ClampedSplineCfg::new(fp0, fpn)
         .set_x(&x)?
@@ -49,8 +49,10 @@ fn exact_hits() -> RiverResult {
     // y' = 3x^2 - 2
     let x = [0.0, 1.0, 2.0, 3.0];
     let y: Vec<f64> = x.iter().map(|&t| t*t*t - 2.0*t + 1.0).collect();
+
     let fp0 = 3.0*0.0*0.0 - 2.0;
     let fpn = 3.0*3.0*3.0 - 2.0;
+
     let cfg = ClampedSplineCfg::new(fp0, fpn)
         .set_x(&x)?
         .set_y(&y)?
