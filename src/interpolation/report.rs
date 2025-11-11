@@ -9,6 +9,12 @@
 
 use crate::interpolation::algorithms::Algorithm;
 
+#[derive(Debug, Clone)]
+pub enum Details {
+    None,
+    Newton { coefficients: Vec<f64> },
+}
+
 /// Summary of an interpolation run.
 ///
 /// [`InterpolationReport`]
@@ -16,12 +22,15 @@ use crate::interpolation::algorithms::Algorithm;
 /// - `n_provided`     : number of input data points `(x, y)`
 /// - `n_evaluated`    : number of points at which interpolation was performed
 /// - `evaluated`      : interpolated values at each evaluation point
+/// - `details`        : method-specific details, like calculated coefficients
+///                      in [`Algorithm::Newton`].
 #[derive(Debug, Clone)]
 pub struct InterpolationReport {
-    pub algorithm_name: &'static str,
-    pub n_provided: usize,
-    pub n_evaluated: usize,
-    pub evaluated: Vec<f64>,
+    pub algorithm_name  : &'static str,
+    pub n_provided      : usize,
+    pub n_evaluated     : usize,
+    pub evaluated       : Vec<f64>,
+    pub details         : Details
 }
 
 impl InterpolationReport {
@@ -31,6 +40,7 @@ impl InterpolationReport {
             n_provided,
             n_evaluated,
             evaluated: Vec::new(),
+            details: Details::None
         }
     }
 }

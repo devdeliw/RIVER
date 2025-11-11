@@ -8,6 +8,9 @@
 pub enum Algorithm {
     Linear,
     Newton, 
+    SplineNatural, 
+    SplineClamped,
+    SplineMonotonic, 
 }
 
 impl Algorithm {
@@ -15,6 +18,9 @@ impl Algorithm {
         match self {
             Algorithm::Linear => "linear",
             Algorithm::Newton => "newton",
+            Algorithm::SplineNatural   => "natural cubic spline",
+            Algorithm::SplineClamped   => "clamped cubic spline", 
+            Algorithm::SplineMonotonic => "monotonic cubic spline"
         }
     }
 }
